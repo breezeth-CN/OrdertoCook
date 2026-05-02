@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "ordertocook:chef_coins",
+  "ingredients": [
+    { "item": "ordertocook:chef_coin_5" },
+    { "item": "ordertocook:chef_coin_5" },
+    { "item": "ordertocook:chef_coin_5" },
+    { "item": "ordertocook:chef_coin_5" }
+  ],
+  "result": { "id": "ordertocook:chef_coin_20", "count": 1 }
+}

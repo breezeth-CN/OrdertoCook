@@ -1,0 +1,20 @@
+{
+	"format_version": "1.9.0",
+	"ambientocclusion": false,
+	"texture_size": [64, 64],
+	"textures": {
+		"1": "ordertocook:block/order_machine",
+		"particle": "ordertocook:block/order_machine"
+	},
+	"elements": [
+		{
+			"from": [3, -0.25, 5.84375],
+			"to": [13, 10.75, 5.90625],
+			"rotation": {"angle": 22.5, "axis": "x", "origin": [8, -4.25, 4]},
+			"faces": {
+				"north": {"uv": [7.5, 0, 10, 2.75], "texture": "#1"},
+				"south": {"uv": [7.5, 3, 10, 5.75], "texture": "#1"}
+			}
+		}
+	]
+}

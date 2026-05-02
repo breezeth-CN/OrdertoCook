@@ -1,0 +1,14 @@
+{
+  "npc_names": [
+    "Aloe","Basil","Lavender","Mint","Rosemary","Sage","Thyme","Clover","Lotus","Lily",
+    "Iris","Poppy","Daisy","Rose","Violet","Orchid","Jasmine","Honeysuckle","Morning Glory","Evening Primrose",
+    "Celeste","Emily","Lia","Haley","Maru","Penny","Abigail","Robin","Marnie","Caroline",
+    "Jodi","Evelyn","George","Quinn","Sandy","Theo","Lisha","Noelle","Alyssa","Freya",
+    "Link","Zelda","Ganondorf","Sidon","Mipha","Revali","Urbosa","Daruk","Yunobo","Riju",
+    "Cloud","Tifa","Aerith","Barret","Yuffie","Vincent","Sephiroth","Lightning","Noctis","Lunafreya",
+    "Zhongli","Ganyu","Xiao","Hutao","Raiden","Yae Miko","Ayaka","Kazuha","Itto","Ayato",
+    "Nahida","Nilou","Cyno","Alhaitham","Dehya","Tighnari","Wanderer","Faruzan","Layla","Kaveh",
+    "Baizhu","Kuki Shinobu","Heizou","Sara","Kokomi","Gorou","Shenhe","Yun Jin","Yaoyao","Yaoyao",
+    "TestUser","Modder","ResourcePackMaster","CustomName1","CustomName2"
+  ]
+}

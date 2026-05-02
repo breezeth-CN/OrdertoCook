@@ -1,0 +1,23 @@
+{
+  "parent": "ordertocook:ordertocook/root",
+  "display": {
+    "icon": {
+      "item": "ordertocook:chef_coin_100"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.golden_restaurant"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.golden_restaurant.desc"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "golden_restaurant": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

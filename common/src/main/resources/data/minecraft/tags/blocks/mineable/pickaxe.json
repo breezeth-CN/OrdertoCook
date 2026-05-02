@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "ordertocook:order_machine",
+    "ordertocook:countertop",
+    "ordertocook:washingtable"
+  ]
+}

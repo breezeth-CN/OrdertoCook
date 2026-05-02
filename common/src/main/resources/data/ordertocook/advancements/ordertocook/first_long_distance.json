@@ -1,0 +1,26 @@
+{
+  "parent": "ordertocook:ordertocook/first_order",
+  "display": {
+    "icon": {
+      "item": "minecraft:compass"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.first_long_distance"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.first_long_distance.desc"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "completed_long_distance": {
+      "trigger": "ordertocook:order_completed",
+      "conditions": {
+        "long_distance": true
+      }
+    }
+  }
+}

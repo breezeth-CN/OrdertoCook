@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "ordertocook:chair",
+    "ordertocook:shelf",
+    "ordertocook:plate_shelf",
+    "ordertocook:board",
+    "ordertocook:takeout_bag",
+    "ordertocook:countertop"
+  ]
+}

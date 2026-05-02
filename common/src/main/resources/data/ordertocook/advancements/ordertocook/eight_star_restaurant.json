@@ -1,0 +1,23 @@
+{
+  "parent": "ordertocook:ordertocook/root",
+  "display": {
+    "icon": {
+      "item": "ordertocook:order_machine"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.eight_star_restaurant"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.eight_star_restaurant.desc"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "max_level": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+	"required": true,
+	"package": "cn.breezeth.ordertocook.mixin",
+	"plugin": "cn.breezeth.ordertocook.mixin.MixinPlugin",
+	"refmap": "client-ordertocook-refmap.json",
+	"compatibilityLevel": "JAVA_17",
+	"client": [
+		"client.vehicle.CameraMixin",
+		"client.compat.touhoulittlemaid.EntityChairGetYawMixin",
+		"client.vehicle.ArmorFeatureRendererMixin",
+		"client.vehicle.ClientPlayerInteractionManagerMixin",
+		"client.HeldItemRendererMixin",
+		"client.LivingEntityRendererMixin",
+		"client.vehicle.ItemRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

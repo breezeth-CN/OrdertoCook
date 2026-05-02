@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "ordertocook:block/takeout_bag" },
+    "facing=east": { "model": "ordertocook:block/takeout_bag", "y": 90 },
+    "facing=south": { "model": "ordertocook:block/takeout_bag", "y": 180 },
+    "facing=west": { "model": "ordertocook:block/takeout_bag", "y": 270 }
+  }
+}

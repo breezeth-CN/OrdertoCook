@@ -1,0 +1,18 @@
+{
+  "parent": "minecraft:adventure/root",
+  "display": {
+    "icon": { "item": "ordertocook:takeout_bag" },
+    "title": { "translate": "advancement.ordertocook.expired_bag_eaten.title" },
+    "description": { "translate": "advancement.ordertocook.expired_bag_eaten.description" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false,
+    "background": "minecraft:textures/gui/advancements/backgrounds/adventure.png"
+  },
+  "criteria": {
+    "eat_expired": {
+      "trigger": "ordertocook:expired_bag_eaten"
+    }
+  }
+}

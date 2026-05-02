@@ -1,0 +1,58 @@
+{
+  "multipart": [
+    { "when": { "facing": "north" }, "apply": { "model": "ordertocook:block/shelf_idle" } },
+    { "when": { "facing": "east" },  "apply": { "model": "ordertocook:block/shelf_idle", "y": 90 } },
+    { "when": { "facing": "south" }, "apply": { "model": "ordertocook:block/shelf_idle", "y": 180 } },
+    { "when": { "facing": "west" },  "apply": { "model": "ordertocook:block/shelf_idle", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "1" }, "apply": { "model": "ordertocook:block/shelf_1" } },
+    { "when": { "facing": "east",  "papers": "1" }, "apply": { "model": "ordertocook:block/shelf_1", "y": 90 } },
+    { "when": { "facing": "south", "papers": "1" }, "apply": { "model": "ordertocook:block/shelf_1", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "1" }, "apply": { "model": "ordertocook:block/shelf_1", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "2" }, "apply": { "model": "ordertocook:block/shelf_2" } },
+    { "when": { "facing": "east",  "papers": "2" }, "apply": { "model": "ordertocook:block/shelf_2", "y": 90 } },
+    { "when": { "facing": "south", "papers": "2" }, "apply": { "model": "ordertocook:block/shelf_2", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "2" }, "apply": { "model": "ordertocook:block/shelf_2", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "3" }, "apply": { "model": "ordertocook:block/shelf_3" } },
+    { "when": { "facing": "east",  "papers": "3" }, "apply": { "model": "ordertocook:block/shelf_3", "y": 90 } },
+    { "when": { "facing": "south", "papers": "3" }, "apply": { "model": "ordertocook:block/shelf_3", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "3" }, "apply": { "model": "ordertocook:block/shelf_3", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "4" }, "apply": { "model": "ordertocook:block/shelf_4" } },
+    { "when": { "facing": "east",  "papers": "4" }, "apply": { "model": "ordertocook:block/shelf_4", "y": 90 } },
+    { "when": { "facing": "south", "papers": "4" }, "apply": { "model": "ordertocook:block/shelf_4", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "4" }, "apply": { "model": "ordertocook:block/shelf_4", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "5" }, "apply": { "model": "ordertocook:block/shelf_5" } },
+    { "when": { "facing": "east",  "papers": "5" }, "apply": { "model": "ordertocook:block/shelf_5", "y": 90 } },
+    { "when": { "facing": "south", "papers": "5" }, "apply": { "model": "ordertocook:block/shelf_5", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "5" }, "apply": { "model": "ordertocook:block/shelf_5", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "6" }, "apply": { "model": "ordertocook:block/shelf_6" } },
+    { "when": { "facing": "east",  "papers": "6" }, "apply": { "model": "ordertocook:block/shelf_6", "y": 90 } },
+    { "when": { "facing": "south", "papers": "6" }, "apply": { "model": "ordertocook:block/shelf_6", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "6" }, "apply": { "model": "ordertocook:block/shelf_6", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "7" }, "apply": { "model": "ordertocook:block/shelf_7" } },
+    { "when": { "facing": "east",  "papers": "7" }, "apply": { "model": "ordertocook:block/shelf_7", "y": 90 } },
+    { "when": { "facing": "south", "papers": "7" }, "apply": { "model": "ordertocook:block/shelf_7", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "7" }, "apply": { "model": "ordertocook:block/shelf_7", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "8" }, "apply": { "model": "ordertocook:block/shelf_8" } },
+    { "when": { "facing": "east",  "papers": "8" }, "apply": { "model": "ordertocook:block/shelf_8", "y": 90 } },
+    { "when": { "facing": "south", "papers": "8" }, "apply": { "model": "ordertocook:block/shelf_8", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "8" }, "apply": { "model": "ordertocook:block/shelf_8", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "9" }, "apply": { "model": "ordertocook:block/shelf_9" } },
+    { "when": { "facing": "east",  "papers": "9" }, "apply": { "model": "ordertocook:block/shelf_9", "y": 90 } },
+    { "when": { "facing": "south", "papers": "9" }, "apply": { "model": "ordertocook:block/shelf_9", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "9" }, "apply": { "model": "ordertocook:block/shelf_9", "y": 270 } },
+
+    { "when": { "facing": "north", "papers": "10" }, "apply": { "model": "ordertocook:block/shelf_10" } },
+    { "when": { "facing": "east",  "papers": "10" }, "apply": { "model": "ordertocook:block/shelf_10", "y": 90 } },
+    { "when": { "facing": "south", "papers": "10" }, "apply": { "model": "ordertocook:block/shelf_10", "y": 180 } },
+    { "when": { "facing": "west",  "papers": "10" }, "apply": { "model": "ordertocook:block/shelf_10", "y": 270 } }
+  ]
+}

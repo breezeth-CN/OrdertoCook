@@ -1,0 +1,23 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'OrderToCook-MultiVersion'
+
+include 'common'
+include 'fabric-1.20.1'
+include 'fabric-1.21.1'
+
+// NeoForge 使用 net.neoforged.moddev，其依赖链含 Java 25 字节码；在 Gradle 8.x 解析构建脚本时会触发
+// Unsupported class file major version 69。编 Fabric 时可保持为 false；要编 NeoForge 时再改为 true，并改用 Gradle 9.1+ 与兼容的 Loom/插件。
+def neoProps = new Properties()
+def neoFile = file('gradle.properties')
+if (neoFile.exists()) neoFile.withInputStream { neoProps.load(it) }
+if ('true'.equalsIgnoreCase(neoProps.getProperty('enable_neoforge_subprojects', 'false'))) {
+    include 'neoforge-1.21.1'
+    include 'neoforge-1.21.4'
+}

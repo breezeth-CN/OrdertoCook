@@ -1,0 +1,28 @@
+{
+  "multipart": [
+    { "when": { "facing": "north" }, "apply": { "model": "ordertocook:block/order_machine_idle" } },
+    { "when": { "facing": "east" },  "apply": { "model": "ordertocook:block/order_machine_idle", "y": 90 } },
+    { "when": { "facing": "south" }, "apply": { "model": "ordertocook:block/order_machine_idle", "y": 180 } },
+    { "when": { "facing": "west" },  "apply": { "model": "ordertocook:block/order_machine_idle", "y": 270 } },
+
+    { "when": { "facing": "north", "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0" } },
+    { "when": { "facing": "east",  "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 90 } },
+    { "when": { "facing": "south", "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 180 } },
+    { "when": { "facing": "west",  "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 270 } },
+
+    { "when": { "facing": "north", "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1" } },
+    { "when": { "facing": "east",  "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 90 } },
+    { "when": { "facing": "south", "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 180 } },
+    { "when": { "facing": "west",  "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 270 } },
+
+    { "when": { "facing": "north", "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2" } },
+    { "when": { "facing": "east",  "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 90 } },
+    { "when": { "facing": "south", "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 180 } },
+    { "when": { "facing": "west",  "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 270 } },
+
+    { "when": { "facing": "north", "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2" } },
+    { "when": { "facing": "east",  "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 90 } },
+    { "when": { "facing": "south", "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 180 } },
+    { "when": { "facing": "west",  "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 270 } }
+  ]
+}

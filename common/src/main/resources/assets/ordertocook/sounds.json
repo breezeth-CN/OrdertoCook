@@ -1,0 +1,44 @@
+{
+  "prestige_get": {
+    "subtitle": "subtitles.ordertocook.prestige_get",
+    "sounds": [
+      "ordertocook:prestige_get"
+    ]
+  },
+  "order_refresh": {
+    "subtitle": "subtitles.ordertocook.order_refresh",
+    "sounds": [
+      "ordertocook:order_refresh"
+    ]
+  },
+  "horn": {
+    "subtitle": "subtitle.ordertocook.horn",
+    "sounds": [
+      "ordertocook:horn"
+    ]
+  },
+  "bag_place": {
+    "subtitle": "subtitle.ordertocook.bag_place",
+    "sounds": [
+      "ordertocook:bag_interact"
+    ]
+  },
+  "bag_pickup": {
+    "subtitle": "subtitle.ordertocook.bag_pickup",
+    "sounds": [
+      "ordertocook:bag_interact"
+    ]
+  },
+  "plate_place": {
+    "sounds": [
+      "ordertocook:plate_place_1",
+      "ordertocook:plate_place_2",
+      "ordertocook:plate_place_3"
+    ]
+  },
+  "food_plate_place": {
+    "sounds": [
+      "ordertocook:food_plate_place"
+    ]
+  }
+}

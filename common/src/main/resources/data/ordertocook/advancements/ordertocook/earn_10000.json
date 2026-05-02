@@ -1,0 +1,26 @@
+{
+  "parent": "ordertocook:ordertocook/earn_1000",
+  "display": {
+    "icon": {
+      "item": "ordertocook:chef_coin_10000"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.earn_10000"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.earn_10000.desc"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "earn_10000": {
+      "trigger": "ordertocook:total_coin",
+      "conditions": {
+        "min_total": 10000
+      }
+    }
+  }
+}

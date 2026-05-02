@@ -1,0 +1,36 @@
+{
+  "display": {
+    "icon": {
+      "item": "ordertocook:order_machine"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.root"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.root.desc"
+    },
+    "background": "minecraft:textures/gui/advancements/backgrounds/stone.png",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "placed_order_machine": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:location_check",
+            "predicate": {
+              "block": {
+                "blocks": [
+                  "ordertocook:order_machine"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

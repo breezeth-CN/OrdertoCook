@@ -1,0 +1,6 @@
+{
+	"parent": "ordertocook:item/helmet",
+	"textures": {
+		"layer0": "ordertocook:item/delivery_helmet_blue"
+	}
+}

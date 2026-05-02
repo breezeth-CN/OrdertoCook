@@ -1,0 +1,18 @@
+{
+	"required": true,
+	"package": "cn.breezeth.ordertocook.mixin",
+	"plugin": "cn.breezeth.ordertocook.mixin.MixinPlugin",
+	"refmap": "ordertocook-refmap.json",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"PlayerEntityMixin",
+		"MotorcycleFallDamageMixin",
+		"ItemEntityMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 1,
+	"id": "ordertocook",
+	"version": "${version}",
+	"name": "下单了",
+	"description": "通过接取外卖订单、到店食物订单，制作并交付来获取奖励；包含等级成长、概率加成、加急订单等玩法机制",
+	"authors": [
+		"breezeth (微风)"
+	],
+	"contributors": [
+		"Ao22333"
+	],
+	"contact": {
+		"homepage": "https://space.bilibili.com/21676027",
+		"issues": "https://www.mcmod.cn/class/25025.html）"
+	},
+	"license": "All Rights Reserved",
+	"icon": "assets/ordertocook/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"cn.breezeth.ordertocook.OrderToCookMod"
+		],
+		"client": [
+			"cn.breezeth.ordertocook.client.OrderToCookModClient"
+		]
+	},
+	"mixins": [
+		"ordertocook.mixins.json",
+		"ordertocook.client.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.18.2",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*",
+		"geckolib": ">=4.8.4"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}

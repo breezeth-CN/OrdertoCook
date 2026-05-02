@@ -1,0 +1,25 @@
+{
+  "parent": "ordertocook:ordertocook/root",
+  "display": {
+    "icon": {
+      "item": "ordertocook:order"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.first_order"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.first_order.desc"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "completed_order": {
+      "trigger": "ordertocook:order_completed",
+      "conditions": {
+      }
+    }
+  }
+}

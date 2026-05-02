@@ -1,0 +1,105 @@
+plugins {
+id 'fabric-loom' version '1.11.8'
+id 'maven-publish'
+}
+def localProps = new Properties()
+file("gradle.properties").withInputStream { localProps.load(it) }
+version = localProps.getProperty("mod_version") ?: (project.hasProperty("mod_version") ? project.mod_version : project.version)
+group = localProps.getProperty("maven_group") ?: (project.hasProperty("maven_group") ? project.maven_group : project.group)
+base {
+archivesName = localProps.getProperty("archives_base_name") ?: (project.hasProperty("archives_base_name") ? project.archives_base_name : "ordertocook")
+}
+repositories {
+    maven { name = 'BMCLAPI'; url = 'https://bmclapi2.bangbang93.com/maven/' }
+    maven { url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
+    maven { url = 'https://maven.aliyun.com/repository/public' }
+    maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content {
+            includeGroup("software.bernie.geckolib")
+        }
+    }
+    maven { url = 'https://maven.blamejared.com' }
+    maven { url = 'https://maven.blamejared.com' }
+    mavenCentral()
+    mavenCentral()
+}
+loom {
+splitEnvironmentSourceSets()
+mixin {
+defaultRefmapName = "ordertocook-refmap.json"
+}
+mods {
+"ordertocook" {
+sourceSet sourceSets.main
+sourceSet sourceSets.client
+}
+}
+}
+sourceSets {
+    main {
+        resources {
+            // common 在前，本模块在后以便覆盖（如无水面 idle + BER，与 1.20.1 一致）
+            srcDirs = [
+                    "${project(':common').projectDir}/src/main/resources",
+                    "${projectDir}/src/main/resources"
+            ]
+        }
+    }
+}
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${localProps.getProperty('geckolib_version') ?: (project.hasProperty('geckolib_version') ? project.geckolib_version : '4.8.4')}"
+    modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
+    include "blue.endless:jankson:1.2.3"
+    implementation "blue.endless:jankson:1.2.3"
+    implementation project(':common')
+    include project(':common')
+}
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+inputs.property "version", project.version
+filesMatching("fabric.mod.json") {
+expand "version": inputs.properties.version
+}
+}
+tasks.withType(JavaCompile).configureEach {
+it.options.release = 21
+}
+java {
+toolchain {
+languageVersion = JavaLanguageVersion.of(21)
+}
+withSourcesJar()
+sourceCompatibility = JavaVersion.VERSION_21
+targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaExec).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(Test).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def modVer = localProps.getProperty("mod_version") ?: (project.hasProperty("mod_version") ? project.mod_version : project.version)
+def mcVer = localProps.getProperty("minecraft_version") ?: (project.hasProperty("minecraft_version") ? project.minecraft_version : "1.21.1")
+def mcMinor = mcVer.tokenize('.').take(2).join('.')
+tasks.withType(Jar).configureEach {
+    if (name == 'jar') {
+        archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+    }
+}
+tasks.named("remapJar").configure {
+    archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+}

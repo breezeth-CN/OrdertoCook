@@ -1,0 +1,26 @@
+{
+  "parent": "ordertocook:ordertocook/first_order",
+  "display": {
+    "icon": {
+      "item": "ordertocook:chef_coin_100"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.earn_100"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.earn_100.desc"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "earn_100": {
+      "trigger": "ordertocook:total_coin",
+      "conditions": {
+        "min_total": 100
+      }
+    }
+  }
+}
