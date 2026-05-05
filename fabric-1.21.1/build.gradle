@@ -22,8 +22,6 @@ repositories {
         }
     }
     maven { url = 'https://maven.blamejared.com' }
-    maven { url = 'https://maven.blamejared.com' }
-    mavenCentral()
     mavenCentral()
 }
 loom {
@@ -55,7 +53,9 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${localProps.getProperty('geckolib_version') ?: (project.hasProperty('geckolib_version') ? project.geckolib_version : '4.8.4')}"
-    modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
+    if ((localProps.getProperty('enable_jei_runtime') ?: 'false').toBoolean()) {
+        modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
+    }
     include "blue.endless:jankson:1.2.3"
     implementation "blue.endless:jankson:1.2.3"
     implementation project(':common')
@@ -102,4 +102,8 @@ tasks.withType(Jar).configureEach {
 }
 tasks.named("remapJar").configure {
     archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+}
+
+tasks.named("sourcesJar").configure {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

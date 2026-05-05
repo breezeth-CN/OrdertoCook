@@ -1,0 +1,119 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.134'
+    id 'maven-publish'
+}
+
+def localProps = new Properties()
+file("gradle.properties").withInputStream { localProps.load(it) }
+
+version = localProps.getProperty("mod_version")
+group = localProps.getProperty("maven_group")
+
+base {
+    archivesName = localProps.getProperty("archives_base_name")
+}
+
+repositories {
+    maven {
+        name = 'NeoForge'
+        url = 'https://maven.neoforged.net/releases'
+        content {
+            excludeGroup 'mezz.jei'
+        }
+    }
+    maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
+    maven { name = 'GeckoLib'; url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
+    maven { name = 'BlameJared'; url = 'https://maven.blamejared.com' }
+    maven { url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
+    maven { url = 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = [
+                    "${project(':common').projectDir}/src/main/resources",
+                    "${projectDir}/src/main/resources"
+            ]
+        }
+    }
+    client {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    clientImplementation.extendsFrom implementation
+    clientCompileOnly.extendsFrom compileOnly
+    clientRuntimeOnly.extendsFrom runtimeOnly
+}
+
+neoForge {
+    version = localProps.getProperty("neo_version")
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file("runs/client")
+        }
+        server {
+            server()
+            gameDirectory = project.file("runs/server")
+            programArgument("--nogui")
+        }
+    }
+
+    addModdingDependenciesTo sourceSets.client
+
+    mods {
+        ordertocook {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+    implementation "blue.endless:jankson:1.2.3"
+    jarJar(implementation("blue.endless:jankson:1.2.3")) {
+        version {
+            strictly '[1.2.3,1.3)'
+            prefer '1.2.3'
+        }
+    }
+
+    implementation "software.bernie.geckolib:geckolib-neoforge-${localProps.getProperty('minecraft_version')}:${localProps.getProperty('geckolib_version')}"
+    if (!providers.gradleProperty("ordertocook.skipJeiRuntime").map { it.toBoolean() }.getOrElse(false)) {
+        runtimeOnly "mezz.jei:jei-${localProps.getProperty('minecraft_version')}-neoforge:${localProps.getProperty('jei_version')}"
+    }
+    additionalRuntimeClasspath "blue.endless:jankson:1.2.3"
+}
+
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    inputs.property "version", project.version
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": inputs.properties.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(Jar).configureEach {
+    if (name == 'jar') {
+        archiveFileName = "ordertocook-${project.version}-neoforge1.21.1.jar"
+    }
+}

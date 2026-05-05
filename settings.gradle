@@ -1,5 +1,7 @@
 pluginManagement {
     repositories {
+        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url = 'https://maven.minecraftforge.net/' }
         maven { url = 'https://maven.fabricmc.net/' }
         mavenCentral()
         gradlePluginPortal()
@@ -19,5 +21,4 @@ def neoFile = file('gradle.properties')
 if (neoFile.exists()) neoFile.withInputStream { neoProps.load(it) }
 if ('true'.equalsIgnoreCase(neoProps.getProperty('enable_neoforge_subprojects', 'false'))) {
     include 'neoforge-1.21.1'
-    include 'neoforge-1.21.4'
 }

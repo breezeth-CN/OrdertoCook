@@ -44,6 +44,9 @@ public class ModItems {
 
     public static final Item FOOD_PLATE = registerItem("food_plate", new FoodPlateItem(new Item.Settings().maxCount(1)));
 
+    public static final Item FOOD_PLATE_DISPLAY = registerItem("food_plate_display",
+            new BlockItem(ModBlocks.FOOD_PLATE_DISPLAY, new Item.Settings()));
+
     public static final Item MOTORCYCLE = registerItem("motorcycle",
             new MotorcycleItem(new Item.Settings().maxCount(1)));
 

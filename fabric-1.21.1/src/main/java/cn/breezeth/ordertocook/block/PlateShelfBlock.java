@@ -23,6 +23,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
+import net.minecraft.util.ItemScatterer;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 
@@ -99,6 +100,17 @@ public class PlateShelfBlock extends Block {
             }
         }
         return ActionResult.success(world.isClient);
+    }
+
+    @Override
+    protected void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        if (state.getBlock() != newState.getBlock() && !world.isClient) {
+            int plates = state.get(PLATES);
+            if (plates > 0) {
+                ItemScatterer.spawn(world, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(ModItems.CLEAN_PLATE, plates));
+            }
+        }
+        super.onStateReplaced(state, world, pos, newState, moved);
     }
 
     private static VoxelShape rotateShape(Direction from, Direction to, VoxelShape shape) {

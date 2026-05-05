@@ -15,6 +15,7 @@ import net.minecraft.state.property.IntProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
+import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -104,5 +105,16 @@ public class ShelfBlock extends Block {
             stack.decrement(1);
         }
         return ActionResult.SUCCESS;
+    }
+
+    @Override
+    protected void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        if (state.getBlock() != newState.getBlock() && !world.isClient) {
+            int papers = state.get(PAPERS);
+            if (papers > 0) {
+                ItemScatterer.spawn(world, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(Items.LEATHER, papers));
+            }
+        }
+        super.onStateReplaced(state, world, pos, newState, moved);
     }
 }

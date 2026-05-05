@@ -42,7 +42,7 @@ public class OrderToCookModClient implements ClientModInitializer {
         BlockEntityRendererFactories.register(ModBlockEntities.WASHING_TABLE, WashingTableWaterRenderer::new);
 
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.TAKEOUT_BAG, RenderLayer.getCutout());
-        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.WASHINGTABLE, RenderLayer.getTranslucent());
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.WASHINGTABLE, RenderLayer.getCutout());
     }
 
 }

@@ -12,11 +12,25 @@ allprojects {
 
 subprojects { Project sub ->
     // fabric-loom 已应用 Java 插件；此处再 apply 会与 Loom 的 jar/remap 任务链冲突，导致 remapJar 产出异常小的 jar。
-    if (!(sub.name in ['fabric-1.20.1', 'fabric-1.21.1', 'fabric-26.1.1'])) {
+    if (!(sub.name in ['fabric-1.20.1', 'fabric-1.21.1'])) {
         apply plugin: 'java'
     }
 
     repositories {
+        maven {
+            url = 'https://maven.minecraftforge.net/'
+            content {
+                excludeGroup 'mezz.jei'
+                excludeGroup 'remapped.mezz.jei'
+            }
+        }
+        maven {
+            url = 'https://maven.neoforged.net/releases'
+            content {
+                excludeGroup 'mezz.jei'
+                excludeGroup 'remapped.mezz.jei'
+            }
+        }
         maven { url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
         maven { url = 'https://maven.aliyun.com/repository/public' }
         mavenCentral()

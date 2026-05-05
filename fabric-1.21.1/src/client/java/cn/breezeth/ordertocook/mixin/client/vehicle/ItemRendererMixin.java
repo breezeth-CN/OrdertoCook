@@ -37,8 +37,7 @@ public abstract class ItemRendererMixin {
             renderFilteredBakedItemModel(model, light, overlay, matrices, cutoutConsumer, false);
 
             // 绗簩娆★細娓叉煋鍗婇€忔槑鐜荤拑閮ㄥ垎 (Translucent)
-            VertexConsumer translucentConsumer = vertexConsumers.getBuffer(RenderLayer.getTranslucent());
-            renderFilteredBakedItemModel(model, light, overlay, matrices, translucentConsumer, true);
+            renderFilteredBakedItemModel(model, light, overlay, matrices, cutoutConsumer, true);
 
             matrices.pop();
             ci.cancel();
