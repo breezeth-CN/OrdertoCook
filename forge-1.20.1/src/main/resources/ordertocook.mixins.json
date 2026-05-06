@@ -1,0 +1,28 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "cn.breezeth.ordertocook.mixin",
+	"plugin": "cn.breezeth.ordertocook.mixin.MixinPlugin",
+	"refmap": "ordertocook-refmap.json",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"PlayerEntityMixin",
+		"MotorcycleFallDamageMixin",
+		"ItemEntityMixin"
+	],
+	"client": [
+		"client.vehicle.CameraMixin",
+		"client.compat.touhoulittlemaid.EntityChairGetYawMixin",
+		"client.vehicle.ArmorFeatureRendererMixin",
+		"client.vehicle.ClientPlayerInteractionManagerMixin",
+		"client.vehicle.HeldItemRendererMixin",
+		"client.vehicle.ItemRendererMixin",
+		"client.vehicle.LivingEntityRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

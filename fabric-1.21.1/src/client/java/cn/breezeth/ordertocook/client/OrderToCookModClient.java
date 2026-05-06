@@ -7,12 +7,18 @@ import cn.breezeth.ordertocook.registry.ModEntities;
 import cn.breezeth.ordertocook.registry.ModBlocks;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cn.breezeth.ordertocook.core.ModConstants;
+import cn.breezeth.ordertocook.core.NpcNames;
 
 import cn.breezeth.ordertocook.registry.ModScreenHandlers;
 import cn.breezeth.ordertocook.screen.OrderMachineScreen;
@@ -29,6 +35,18 @@ public class OrderToCookModClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+            @Override
+            public Identifier getFabricId() {
+                return Identifier.of(ModConstants.MOD_ID, "npc_names");
+            }
+
+            @Override
+            public void reload(ResourceManager manager) {
+                NpcNames.reloadFromClientResources(manager);
+            }
+        });
+
         HandledScreens.register(ModScreenHandlers.ORDER_MACHINE_SCREEN_HANDLER, OrderMachineScreen::new);
         HandledScreens.register(ModScreenHandlers.COUNTERTOP_SCREEN_HANDLER, TakeoutBoxScreen::new);
         HandledScreens.register(ModScreenHandlers.BOARD_SCREEN_HANDLER, BoardScreen::new);

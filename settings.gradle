@@ -22,3 +22,8 @@ if (neoFile.exists()) neoFile.withInputStream { neoProps.load(it) }
 if ('true'.equalsIgnoreCase(neoProps.getProperty('enable_neoforge_subprojects', 'false'))) {
     include 'neoforge-1.21.1'
 }
+
+if ('true'.equalsIgnoreCase(neoProps.getProperty('enable_forge_subprojects', 'false'))
+        && GradleVersion.current() < GradleVersion.version('9.0')) {
+    include 'forge-1.20.1'
+}

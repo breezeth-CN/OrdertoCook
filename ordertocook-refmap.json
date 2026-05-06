@@ -1,0 +1,30 @@
+{
+  "mappings": {
+    "cn/breezeth/ordertocook/mixin/PlayerEntityMixin": {
+      "addAdditionalSaveData": "Lnet/minecraft/server/level/ServerPlayer;m_7380_(Lnet/minecraft/nbt/CompoundTag;)V",
+      "readAdditionalSaveData": "Lnet/minecraft/server/level/ServerPlayer;m_7378_(Lnet/minecraft/nbt/CompoundTag;)V"
+    },
+    "cn/breezeth/ordertocook/mixin/ItemEntityMixin": {
+      "playerTouch": "Lnet/minecraft/world/entity/item/ItemEntity;m_6123_(Lnet/minecraft/world/entity/player/Player;)V"
+    },
+    "cn/breezeth/ordertocook/mixin/MotorcycleFallDamageMixin": {
+      "causeFallDamage": "Lnet/minecraft/world/entity/player/Player;m_142535_(FFLnet/minecraft/world/damagesource/DamageSource;)Z",
+      "hurt": "Lnet/minecraft/world/entity/player/Player;m_6469_(Lnet/minecraft/world/damagesource/DamageSource;F)Z"
+    }
+  },
+  "data": {
+    "searge": {
+      "cn/breezeth/ordertocook/mixin/PlayerEntityMixin": {
+        "addAdditionalSaveData": "Lnet/minecraft/server/level/ServerPlayer;m_7380_(Lnet/minecraft/nbt/CompoundTag;)V",
+        "readAdditionalSaveData": "Lnet/minecraft/server/level/ServerPlayer;m_7378_(Lnet/minecraft/nbt/CompoundTag;)V"
+      },
+      "cn/breezeth/ordertocook/mixin/ItemEntityMixin": {
+        "playerTouch": "Lnet/minecraft/world/entity/item/ItemEntity;m_6123_(Lnet/minecraft/world/entity/player/Player;)V"
+      },
+      "cn/breezeth/ordertocook/mixin/MotorcycleFallDamageMixin": {
+        "causeFallDamage": "Lnet/minecraft/world/entity/player/Player;m_142535_(FFLnet/minecraft/world/damagesource/DamageSource;)Z",
+        "hurt": "Lnet/minecraft/world/entity/player/Player;m_6469_(Lnet/minecraft/world/damagesource/DamageSource;F)Z"
+      }
+    }
+  }
+}

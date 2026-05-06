@@ -1,0 +1,37 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "All Rights Reserved"
+issueTrackerURL = "https://www.mcmod.cn/class/25025.html"
+
+[[mods]]
+modId = "ordertocook"
+version = "${version}"
+displayName = "Order To Cook"
+authors = "breezeth"
+credits = "Ao22333"
+description = '''
+Take restaurant and delivery orders, cook the requested food, and submit meals for rewards.
+Includes restaurant progression, probability bonuses, rush orders, motorcycles, kitchen blocks, and NPC interactions.
+'''
+logoFile = "assets/ordertocook/icon.png"
+
+[[dependencies.ordertocook]]
+modId = "forge"
+mandatory = true
+versionRange = "[47.4.0,48)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ordertocook]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ordertocook]]
+modId = "geckolib"
+mandatory = true
+versionRange = "[4.8.0,)"
+ordering = "AFTER"
+side = "BOTH"

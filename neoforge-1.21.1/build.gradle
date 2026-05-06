@@ -95,6 +95,9 @@ dependencies {
 processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     inputs.property "version", project.version
+    from("${project(':fabric-1.21.1').projectDir}/src/main/resources/data/ordertocook/recipe") {
+        into "data/ordertocook/recipe"
+    }
     filesMatching("META-INF/neoforge.mods.toml") {
         expand "version": inputs.properties.version
     }
@@ -115,5 +118,6 @@ java {
 tasks.withType(Jar).configureEach {
     if (name == 'jar') {
         archiveFileName = "ordertocook-${project.version}-neoforge1.21.1.jar"
+        from(sourceSets.client.output)
     }
 }

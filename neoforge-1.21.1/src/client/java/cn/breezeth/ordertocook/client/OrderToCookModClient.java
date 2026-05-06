@@ -11,6 +11,7 @@ import cn.breezeth.ordertocook.client.renderer.SeatEntityRenderer;
 import cn.breezeth.ordertocook.client.renderer.WashingTableWaterRenderer;
 import cn.breezeth.ordertocook.client.render.feature.HelmetFeatureRenderer;
 import cn.breezeth.ordertocook.core.ModConstants;
+import cn.breezeth.ordertocook.core.NpcNames;
 import cn.breezeth.ordertocook.entity.SeatEntity;
 import cn.breezeth.ordertocook.entity.CustomerEntity;
 import cn.breezeth.ordertocook.block.entity.WashingTableBlockEntity;
@@ -58,10 +59,12 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Objects;
@@ -134,6 +137,11 @@ public final class OrderToCookModClient {
         event.register(model("item/helmet_blue"));
         event.register(model("item/helmet_yellow"));
         event.register(model("item/helmet_white"));
+    }
+
+    @SubscribeEvent
+    public static void registerClientReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((ResourceManagerReloadListener) NpcNames::reloadFromClientResources);
     }
 
     @SubscribeEvent
