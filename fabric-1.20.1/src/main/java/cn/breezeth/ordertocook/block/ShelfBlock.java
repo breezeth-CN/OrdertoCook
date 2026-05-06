@@ -99,6 +99,7 @@ public class ShelfBlock extends Block {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
         if (state.getBlock() != newState.getBlock() && !world.isClient) {
             int papers = state.get(PAPERS);

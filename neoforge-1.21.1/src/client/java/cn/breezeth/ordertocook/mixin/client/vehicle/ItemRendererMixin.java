@@ -22,6 +22,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 @Mixin(ItemRenderer.class)
+@SuppressWarnings("deprecation")
 public abstract class ItemRendererMixin {
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
