@@ -82,7 +82,7 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
                     case 1 -> restaurantLevel;
                     case 2 -> active ? 1 : 0;
                     case 3 -> effectiveBenefitLevel;
-                    case 4 -> Math.max(1, ConfigManager.get().orderMachineCdMinutes);
+                    case 4 -> Math.max(1, ConfigManager.get().orderMachineRefreshSeconds);
                     default -> 0;
                 };
             }
@@ -247,7 +247,7 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         if (walkInTimer > 0) {
             walkInTimer--;
         } else {
-            // 闂佹彃绉堕悿鍡涘礆閺夎法鏆楅悗骞垮灪缁侊箑螞閳ь剟寮婚妷銉﹀櫙闁?            walkInTimer = ModConstants.WALK_IN_INTERVAL_TICKS;
+            walkInTimer = getWalkInAttemptIntervalTicks();
             if (this.level instanceof ServerLevel sw) {
                 trySpawnWalkIn(sw);
             }
@@ -255,8 +255,15 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     }
 
     private int getRefreshTimeTicks() {
-        int minutes = Math.max(1, ConfigManager.get().orderMachineCdMinutes);
-        long ticks = minutes * 60L * 20L;
+        int seconds = Math.max(1, ConfigManager.get().orderMachineRefreshSeconds);
+        long ticks = seconds * 20L;
+        if (ticks > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) ticks;
+    }
+
+    private int getWalkInAttemptIntervalTicks() {
+        int seconds = Math.max(1, ConfigManager.get().walkInAttemptIntervalSeconds);
+        long ticks = seconds * 20L;
         if (ticks > Integer.MAX_VALUE) return Integer.MAX_VALUE;
         return (int) ticks;
     }
@@ -373,10 +380,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         ArrayList<Item> list = new ArrayList<>();
         for (ItemStack s : be.getItems()) {
             if (s.isEmpty()) continue;
-            FoodProperties fc = s.get(net.minecraft.core.component.DataComponents.FOOD);
-            int nutrition = (fc != null) ? fc.nutrition() : 0;
+            int nutrition = ConfigManager.getCustomMenuNutrition(s);
             if (nutrition <= 0) {
-                nutrition = ConfigManager.getCustomMenuNutrition(s);
+                FoodProperties fc = s.get(net.minecraft.core.component.DataComponents.FOOD);
+                nutrition = (fc != null) ? fc.nutrition() : 0;
             }
             if (nutrition <= 0) continue;
             list.add(s.getItem());

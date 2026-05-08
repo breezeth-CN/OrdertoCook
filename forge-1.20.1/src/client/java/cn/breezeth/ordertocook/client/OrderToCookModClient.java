@@ -346,13 +346,15 @@ public final class OrderToCookModClient {
         }
 
         if (activeWashPos != null) {
-            if (player.tickCount - activeWashStartAge >= 80L || !canContinueWashing(client, activeWashPos)) {
-                if (player.tickCount - activeWashStartAge >= 80L) {
-                    washBlockedUntilRelease = true;
-                    stopWashing(client, false);
+            if (player.tickCount - activeWashStartAge >= 80L) {
+                BlockPos washPos = activeWashPos;
+                if (canContinueWashing(client, washPos)) {
+                    beginWashing(player, washPos);
                 } else {
-                    stopWashing(client, true);
+                    stopWashing(client, false);
                 }
+            } else if (!canContinueWashing(client, activeWashPos)) {
+                stopWashing(client, true);
             }
             return;
         }
@@ -366,6 +368,10 @@ public final class OrderToCookModClient {
             return;
         }
 
+        beginWashing(player, washPos);
+    }
+
+    private static void beginWashing(LocalPlayer player, BlockPos washPos) {
         activeWashPos = washPos;
         activeWashStartAge = player.tickCount;
         RiderRenderBridge.triggerWashStart(player);

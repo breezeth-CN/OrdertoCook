@@ -332,11 +332,12 @@ public class BoardScreen extends HandledScreen<BoardScreenHandler> {
     }
 
     private int nutritionOf(ItemStack stack) {
-        FoodComponent food = stack.get(net.minecraft.component.DataComponentTypes.FOOD);
-        if (food != null && food.nutrition() > 0) {
-            return food.nutrition();
+        int custom = ConfigManager.getCustomMenuNutrition(stack);
+        if (custom > 0) {
+            return custom;
         }
-        return Math.max(0, ConfigManager.getCustomMenuNutrition(stack));
+        FoodComponent food = stack.get(net.minecraft.component.DataComponentTypes.FOOD);
+        return (food != null && food.nutrition() > 0) ? food.nutrition() : 0;
     }
     
     private void renderTooltips(DrawContext context, int mouseX, int mouseY) {

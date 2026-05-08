@@ -90,6 +90,16 @@ public class ConfigManager {
             changed = true;
         }
 
+        if (cfg.orderMachineRefreshSeconds < 1) {
+            cfg.orderMachineRefreshSeconds = defaults.orderMachineRefreshSeconds;
+            changed = true;
+        }
+
+        if (cfg.walkInAttemptIntervalSeconds < 1) {
+            cfg.walkInAttemptIntervalSeconds = defaults.walkInAttemptIntervalSeconds;
+            changed = true;
+        }
+
         if (cfg.orderMachineUpgradeBoardHunger == null) {
             cfg.orderMachineUpgradeBoardHunger = defaults.orderMachineUpgradeBoardHunger;
             changed = true;
@@ -110,8 +120,11 @@ public class ConfigManager {
         if (file.exists()) {
             try {
                 JsonObject json = JANKSON.load(file);
-                migrateLegacyConfigKeys(json);
+                boolean migrated = migrateLegacyConfigKeys(json);
                 T loaded = JANKSON.fromJson(json, type);
+                if (migrated) {
+                    saveConfig(file, loaded);
+                }
                 return loaded;
             } catch (Exception e) {
                 OrderToCookMod.LOGGER.error("Failed to load config " + file.getName() + ", using defaults", e);
@@ -122,18 +135,40 @@ public class ConfigManager {
         return defaultInstance;
     }
 
-    private static void migrateLegacyConfigKeys(JsonObject json) {
-        renameConfigKey(json, "villagerRate", "normalCustomerRate");
-        renameConfigKey(json, "zombieRate", "easterEggCustomerRate");
-        renameConfigKey(json, "tipZombieChance", "tipEasterEggCustomerChance");
+    private static boolean migrateLegacyConfigKeys(JsonObject json) {
+        boolean changed = false;
+        changed |= renameConfigKey(json, "villagerRate", "normalCustomerRate");
+        changed |= renameConfigKey(json, "zombieRate", "easterEggCustomerRate");
+        changed |= renameConfigKey(json, "tipZombieChance", "tipEasterEggCustomerChance");
+        changed |= migrateMinutesToSeconds(json, "orderMachineCdMinutes", "orderMachineRefreshSeconds");
+        return changed;
     }
 
-    private static void renameConfigKey(JsonObject json, String oldKey, String newKey) {
+    private static boolean migrateMinutesToSeconds(JsonObject json, String oldKey, String newKey) {
+        if (!json.containsKey(oldKey)) {
+            return false;
+        }
+        if (!json.containsKey(newKey)) {
+            JsonElement legacyValue = json.get(oldKey);
+            int minutes = 10;
+            if (legacyValue instanceof JsonPrimitive primitive && primitive.getValue() != null) {
+                try {
+                    minutes = Integer.parseInt(String.valueOf(primitive.getValue()).trim());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            json.put(newKey, new JsonPrimitive(Math.max(1, minutes) * 60));
+        }
+        json.remove(oldKey);
+        return true;
+    }
+
+    private static boolean renameConfigKey(JsonObject json, String oldKey, String newKey) {
         if (oldKey == null || oldKey.isBlank() || newKey == null || newKey.isBlank()) {
-            return;
+            return false;
         }
         if (!json.containsKey(oldKey)) {
-            return;
+            return false;
         }
         JsonElement legacyValue = json.get(oldKey);
         if (!json.containsKey(newKey)) {
@@ -142,6 +177,7 @@ public class ConfigManager {
             }
         }
         json.remove(oldKey);
+        return true;
     }
 
     private static <T> void saveConfig(File file, T instance) {

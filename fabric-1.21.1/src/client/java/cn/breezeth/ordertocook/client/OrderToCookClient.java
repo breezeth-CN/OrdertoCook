@@ -335,13 +335,15 @@ public final class OrderToCookClient implements ClientModInitializer {
         }
 
         if (activeWashPos != null) {
-            if (client.player.age - activeWashStartAge >= 80L || !canContinueWashing(client, activeWashPos)) {
-                if (client.player.age - activeWashStartAge >= 80L) {
-                    washBlockedUntilRelease = true;
-                    stopWashing(client, false);
+            if (client.player.age - activeWashStartAge >= 80L) {
+                BlockPos washPos = activeWashPos;
+                if (canContinueWashing(client, washPos)) {
+                    beginWashing(client, washPos);
                 } else {
-                    stopWashing(client, true);
+                    stopWashing(client, false);
                 }
+            } else if (!canContinueWashing(client, activeWashPos)) {
+                stopWashing(client, true);
             }
             return;
         }
@@ -355,6 +357,13 @@ public final class OrderToCookClient implements ClientModInitializer {
             return;
         }
 
+        beginWashing(client, washPos);
+    }
+
+    private static void beginWashing(MinecraftClient client, BlockPos washPos) {
+        if (client.player == null) {
+            return;
+        }
         activeWashPos = washPos;
         activeWashStartAge = client.player.age;
         RiderRenderBridge.triggerWashStart(client.player);

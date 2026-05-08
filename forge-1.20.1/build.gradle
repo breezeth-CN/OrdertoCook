@@ -42,7 +42,7 @@ configurations {
     clientImplementation.extendsFrom implementation
     clientCompileOnly.extendsFrom compileOnly
     clientRuntimeOnly.extendsFrom runtimeOnly
-    embeddedRuntime
+    janksonShade
 }
 
 minecraft {
@@ -80,13 +80,7 @@ dependencies {
 
     implementation project(':common')
     implementation "blue.endless:jankson:1.2.3"
-    embeddedRuntime "blue.endless:jankson:1.2.3"
-    jarJar(implementation("blue.endless:jankson:1.2.3")) {
-        version {
-            strictly '[1.2.3,1.3)'
-            prefer '1.2.3'
-        }
-    }
+    janksonShade "blue.endless:jankson:1.2.3"
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${localProps.getProperty('minecraft_version')}:${localProps.getProperty('geckolib_version')}")
 
     if (!providers.gradleProperty("ordertocook.skipJeiRuntime").map { it.toBoolean() }.getOrElse(false)) {
@@ -94,20 +88,6 @@ dependencies {
     }
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-}
-
-def embeddedRuntimeDir = layout.buildDirectory.dir("classes/java/main")
-
-tasks.register("unpackEmbeddedRuntime", Copy) {
-    from {
-        configurations.embeddedRuntime.collect { zipTree(it) }
-    }
-    into embeddedRuntimeDir
-    exclude "META-INF/MANIFEST.MF", "META-INF/*.RSA", "META-INF/*.SF", "META-INF/*.DSA"
-}
-
-tasks.named("classes") {
-    dependsOn "unpackEmbeddedRuntime"
 }
 
 mixin {
@@ -119,7 +99,7 @@ mixin {
 processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     inputs.property "version", project.version
-    from("${rootDir}/../fabric-1.20.1/src/main/resources/data/ordertocook/recipes") {
+    from("${project(':fabric-1.20.1').projectDir}/src/main/resources/data/ordertocook/recipes") {
         into "data/ordertocook/recipes"
     }
     filesMatching("META-INF/mods.toml") {
@@ -140,9 +120,13 @@ java {
 }
 
 tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     if (name == 'jar') {
         archiveFileName = "ordertocook-${project.version}-forge1.20.1.jar"
         from sourceSets.client.output
+        into("META-INF/jarjar") {
+            from configurations.janksonShade
+        }
     }
     manifest {
         attributes([
@@ -155,4 +139,6 @@ tasks.withType(Jar).configureEach {
                 "MixinConfigs"            : "ordertocook.mixins.json"
         ])
     }
+    // 排除 jankson 的 module-info 避免与 structure_gel 等模组产生模块冲突
+    exclude 'module-info.class'
 }

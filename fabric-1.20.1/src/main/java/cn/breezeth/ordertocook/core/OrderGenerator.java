@@ -303,10 +303,10 @@ public class OrderGenerator {
             Identifier id = Identifier.tryParse(key);
             if (id == null || !Registries.ITEM.containsId(id)) continue;
             Item item = Registries.ITEM.get(id);
-            var fc = item.getFoodComponent();
-            int nutrition = (fc != null) ? fc.getHunger() : 0;
+            int nutrition = ConfigManager.getCustomMenuNutrition(item);
             if (nutrition <= 0) {
-                nutrition = ConfigManager.getCustomMenuNutrition(item);
+                var fc = item.getFoodComponent();
+                nutrition = (fc != null) ? fc.getHunger() : 0;
             }
             if (nutrition > 0) {
                 sum += nutrition * foodList.getInt(key);

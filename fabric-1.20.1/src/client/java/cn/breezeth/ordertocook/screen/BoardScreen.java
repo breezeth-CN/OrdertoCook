@@ -341,11 +341,12 @@ public class BoardScreen extends HandledScreen<BoardScreenHandler> {
     }
 
     private int nutritionOf(ItemStack stack) {
-        FoodComponent food = stack.getItem().getFoodComponent();
-        if (food != null && food.getHunger() > 0) {
-            return food.getHunger();
+        int custom = ConfigManager.getCustomMenuNutrition(stack);
+        if (custom > 0) {
+            return custom;
         }
-        return Math.max(0, ConfigManager.getCustomMenuNutrition(stack));
+        FoodComponent food = stack.getItem().getFoodComponent();
+        return (food != null && food.getHunger() > 0) ? food.getHunger() : 0;
     }
     
     private void renderTooltips(DrawContext context, int mouseX, int mouseY) {

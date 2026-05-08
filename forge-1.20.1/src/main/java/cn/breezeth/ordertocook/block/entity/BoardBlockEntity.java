@@ -194,11 +194,12 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
     }
 
     private int nutritionOf(ItemStack s) {
-        FoodProperties fc = s.getItem().getFoodProperties();
-        if (fc != null && fc.getNutrition() > 0) {
-            return fc.getNutrition();
+        int custom = ConfigManager.getCustomMenuNutrition(s);
+        if (custom > 0) {
+            return custom;
         }
-        return ConfigManager.getCustomMenuNutrition(s);
+        FoodProperties fc = s.getItem().getFoodProperties();
+        return (fc != null && fc.getNutrition() > 0) ? fc.getNutrition() : 0;
     }
 
     private String idOf(ItemStack s) {

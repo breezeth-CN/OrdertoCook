@@ -290,11 +290,12 @@ public class BoardScreen extends AbstractContainerScreen<BoardScreenHandler> {
     }
 
     private int nutritionOf(ItemStack stack) {
-        FoodProperties food = stack.get(DataComponents.FOOD);
-        if (food != null && food.nutrition() > 0) {
-            return food.nutrition();
+        int custom = ConfigManager.getCustomMenuNutrition(stack);
+        if (custom > 0) {
+            return custom;
         }
-        return Math.max(0, ConfigManager.getCustomMenuNutrition(stack));
+        FoodProperties food = stack.get(DataComponents.FOOD);
+        return (food != null && food.nutrition() > 0) ? food.nutrition() : 0;
     }
 
     private void renderTooltips(GuiGraphics graphics, int mouseX, int mouseY) {

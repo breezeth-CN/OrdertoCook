@@ -1,6 +1,7 @@
 package cn.breezeth.ordertocook.client.renderer;
 
 import cn.breezeth.ordertocook.core.ModConstants;
+import cn.breezeth.ordertocook.config.ConfigManager;
 import cn.breezeth.ordertocook.entity.CustomerEntity;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -34,6 +35,8 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
     private static final Identifier TRANSITION_ANIMATION = new Identifier(ModConstants.MOD_ID, "animations/npc.transition.animation.json");
     private static final java.util.Map<String, CompletableFuture<GameProfile>> PROFILE_CACHE = new ConcurrentHashMap<>();
     private static final java.util.Map<String, Supplier<Identifier>> SKIN_CACHE = new ConcurrentHashMap<>();
+    private static int customWideSkinCount = -1;
+    private static int customSlimSkinCount = -1;
 
     @Override
     public Identifier getModelResource(CustomerEntity animatable) {
@@ -44,6 +47,12 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
     public Identifier getTextureResource(CustomerEntity animatable) {
         if (animatable.usesPlayerSkin()) {
             return getSkinTexture(animatable);
+        }
+        if (ConfigManager.get().customMultipleCustomerSkins) {
+            Identifier customTexture = getCustomCustomerTexture(animatable);
+            if (customTexture != null) {
+                return customTexture;
+            }
         }
         return animatable.getTextureVariant() == 2 ? TEXTURE_SLIM : TEXTURE_WIDE;
     }
@@ -189,5 +198,49 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
             }
         }
         return UUID.nameUUIDFromBytes(("ordertocook:" + entity.getSkinAccount()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static Identifier getCustomCustomerTexture(CustomerEntity entity) {
+        boolean slim = entity.getTextureVariant() == 2;
+        int count = getCustomSkinCount(slim);
+        if (count <= 0) {
+            return null;
+        }
+        int index = Math.floorMod(entity.getUuid().hashCode(), count) + 1;
+        return customTextureId(slim, index);
+    }
+
+    private static int getCustomSkinCount(boolean slim) {
+        if (slim) {
+            if (customSlimSkinCount < 0) {
+                customSlimSkinCount = scanCustomSkinCount(true);
+            }
+            return customSlimSkinCount;
+        }
+        if (customWideSkinCount < 0) {
+            customWideSkinCount = scanCustomSkinCount(false);
+        }
+        return customWideSkinCount;
+    }
+
+    private static int scanCustomSkinCount(boolean slim) {
+        int count = 0;
+        for (int i = 1; i <= 512; i++) {
+            if (!resourceExists(customTextureId(slim, i))) {
+                break;
+            }
+            count = i;
+        }
+        return count;
+    }
+
+    private static Identifier customTextureId(boolean slim, int index) {
+        String prefix = slim ? "custom_slim_" : "custom_wide_";
+        return new Identifier(ModConstants.MOD_ID, "textures/entity/customs/" + prefix + index + ".png");
+    }
+
+    private static boolean resourceExists(Identifier id) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        return client != null && client.getResourceManager().getResource(id).isPresent();
     }
 }

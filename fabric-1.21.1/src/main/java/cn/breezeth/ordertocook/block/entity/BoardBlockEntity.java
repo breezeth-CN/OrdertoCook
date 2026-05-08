@@ -195,11 +195,12 @@ public class BoardBlockEntity extends BlockEntity implements NamedScreenHandlerF
     }
 
     private int nutritionOf(ItemStack s) {
-        FoodComponent fc = s.get(net.minecraft.component.DataComponentTypes.FOOD);
-        if (fc != null && fc.nutrition() > 0) {
-            return fc.nutrition();
+        int custom = ConfigManager.getCustomMenuNutrition(s);
+        if (custom > 0) {
+            return custom;
         }
-        return ConfigManager.getCustomMenuNutrition(s);
+        FoodComponent fc = s.get(net.minecraft.component.DataComponentTypes.FOOD);
+        return (fc != null && fc.nutrition() > 0) ? fc.nutrition() : 0;
     }
 
     private String idOf(ItemStack s) {

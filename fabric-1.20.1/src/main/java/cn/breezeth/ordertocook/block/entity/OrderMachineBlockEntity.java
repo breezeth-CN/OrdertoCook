@@ -82,7 +82,7 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
                     case 1 -> level;
                     case 2 -> active ? 1 : 0;
                     case 3 -> effectiveBenefitLevel;
-                    case 4 -> Math.max(1, ConfigManager.get().orderMachineCdMinutes);
+                    case 4 -> Math.max(1, ConfigManager.get().orderMachineRefreshSeconds);
                     default -> 0;
                 };
             }
@@ -248,7 +248,7 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
             walkInTimer--;
         } else {
             // 重置到店客流检查周期
-            walkInTimer = ModConstants.WALK_IN_INTERVAL_TICKS;
+            walkInTimer = getWalkInAttemptIntervalTicks();
             if (this.world instanceof ServerWorld sw) {
                 trySpawnWalkIn(sw);
             }
@@ -256,8 +256,15 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     }
 
     private int getRefreshTimeTicks() {
-        int minutes = Math.max(1, ConfigManager.get().orderMachineCdMinutes);
-        long ticks = minutes * 60L * 20L;
+        int seconds = Math.max(1, ConfigManager.get().orderMachineRefreshSeconds);
+        long ticks = seconds * 20L;
+        if (ticks > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) ticks;
+    }
+
+    private int getWalkInAttemptIntervalTicks() {
+        int seconds = Math.max(1, ConfigManager.get().walkInAttemptIntervalSeconds);
+        long ticks = seconds * 20L;
         if (ticks > Integer.MAX_VALUE) return Integer.MAX_VALUE;
         return (int) ticks;
     }
@@ -374,10 +381,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
         ArrayList<Item> list = new ArrayList<>();
         for (ItemStack s : be.getItems()) {
             if (s.isEmpty()) continue;
-            FoodComponent fc = s.getItem().getFoodComponent();
-            int nutrition = (fc != null) ? fc.getHunger() : 0;
+            int nutrition = ConfigManager.getCustomMenuNutrition(s);
             if (nutrition <= 0) {
-                nutrition = ConfigManager.getCustomMenuNutrition(s);
+                FoodComponent fc = s.getItem().getFoodComponent();
+                nutrition = (fc != null) ? fc.getHunger() : 0;
             }
             if (nutrition <= 0) continue;
             list.add(s.getItem());

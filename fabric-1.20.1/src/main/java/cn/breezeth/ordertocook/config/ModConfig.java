@@ -12,8 +12,11 @@ public class ModConfig {
     @Comment("========== Order Machine / Levels ==========\nMax number of Order Machines allowed within 24 blocks (Default: 1)")
     public int maxOrderMachinesWithin24 = 1;
 
-    @Comment("Order Machine refresh cooldown in minutes (Default: 10)")
-    public int orderMachineCdMinutes = 10;
+    @Comment("Order Machine refresh cooldown in seconds (Default: 600)")
+    public int orderMachineRefreshSeconds = 600;
+
+    @Comment("Walk-in customer spawn attempt interval in seconds (Default: 60)")
+    public int walkInAttemptIntervalSeconds = 60;
 
     @Comment("Order Machine upgrade requirement: Sum of board menu hunger within 24 blocks.\nIndex = requirement for that level; Lv.0 is always 0.\nDefault: [0,40,80,120,160,200,300,400,600]")
     public List<Integer> orderMachineUpgradeBoardHunger = new ArrayList<>(Arrays.asList(0, 40, 80, 120, 160, 200, 300, 400, 600));
@@ -75,6 +78,9 @@ public class ModConfig {
 
     @Comment("Textured NPC gender ratio: female customer proportion (0.0 - 1.0), Default: 0.5; others are male")
     public double customerFemaleRate = 0.5;
+
+    @Comment("Enable multiple resource-pack customer skins. If true, normal customers use textures/entity/customs/custom_wide_x.png and custom_slim_x.png, with x starting at 1 and continuous. Easter egg player skins are unaffected.")
+    public boolean customMultipleCustomerSkins = false;
 
     @Comment("Easter egg customer probability (0.0 - 1.0), Default: 0.1")
     public double easterEggCustomerRate = 0.1;

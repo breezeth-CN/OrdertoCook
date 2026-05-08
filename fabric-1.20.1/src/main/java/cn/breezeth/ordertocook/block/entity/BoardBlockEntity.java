@@ -195,11 +195,12 @@ public class BoardBlockEntity extends BlockEntity implements NamedScreenHandlerF
     }
 
     private int nutritionOf(ItemStack s) {
-        FoodComponent fc = s.getItem().getFoodComponent();
-        if (fc != null && fc.getHunger() > 0) {
-            return fc.getHunger();
+        int custom = ConfigManager.getCustomMenuNutrition(s);
+        if (custom > 0) {
+            return custom;
         }
-        return ConfigManager.getCustomMenuNutrition(s);
+        FoodComponent fc = s.getItem().getFoodComponent();
+        return (fc != null && fc.getHunger() > 0) ? fc.getHunger() : 0;
     }
 
     private String idOf(ItemStack s) {

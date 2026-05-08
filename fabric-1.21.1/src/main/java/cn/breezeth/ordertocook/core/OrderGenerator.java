@@ -305,10 +305,10 @@ public class OrderGenerator {
             Identifier id = Identifier.tryParse(key);
             if (id == null || !Registries.ITEM.containsId(id)) continue;
             Item item = Registries.ITEM.get(id);
-            FoodComponent fc = item.getComponents().get(DataComponentTypes.FOOD);
-            int nutrition = (fc != null) ? fc.nutrition() : 0;
+            int nutrition = ConfigManager.getCustomMenuNutrition(item);
             if (nutrition <= 0) {
-                nutrition = ConfigManager.getCustomMenuNutrition(item);
+                FoodComponent fc = item.getComponents().get(DataComponentTypes.FOOD);
+                nutrition = (fc != null) ? fc.nutrition() : 0;
             }
             if (nutrition > 0) {
                 sum += nutrition * foodList.getInt(key);

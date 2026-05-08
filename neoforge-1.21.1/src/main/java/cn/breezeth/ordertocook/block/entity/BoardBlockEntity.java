@@ -195,11 +195,12 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
     }
 
     private int nutritionOf(ItemStack s) {
-        FoodProperties fc = s.get(net.minecraft.core.component.DataComponents.FOOD);
-        if (fc != null && fc.nutrition() > 0) {
-            return fc.nutrition();
+        int custom = ConfigManager.getCustomMenuNutrition(s);
+        if (custom > 0) {
+            return custom;
         }
-        return ConfigManager.getCustomMenuNutrition(s);
+        FoodProperties fc = s.get(net.minecraft.core.component.DataComponents.FOOD);
+        return (fc != null && fc.nutrition() > 0) ? fc.nutrition() : 0;
     }
 
     private String idOf(ItemStack s) {
