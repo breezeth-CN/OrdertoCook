@@ -70,11 +70,11 @@ public class OrderMachineScreenHandler extends ScreenHandler {
         return propertyDelegate.get(2) != 0;
     }
 
-    public int getCooldownMinutes() {
+    public int getCooldownSeconds() {
         try {
             return Math.max(1, propertyDelegate.get(4));
         } catch (Throwable t) {
-            return 10;
+            return 600;
         }
     }
 

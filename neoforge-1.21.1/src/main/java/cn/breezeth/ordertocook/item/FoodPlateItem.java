@@ -31,11 +31,6 @@ public class FoodPlateItem extends Item {
             return InteractionResultHolder.pass(stack);
         }
 
-        if (!world.isClientSide && world instanceof ServerLevel sw) {
-            if (TakeoutBagItem.trySubmitDineInNearby(sw, user, stack, nbt, ModSounds.FOOD_PLATE_PLACE.get())) {
-                return InteractionResultHolder.success(stack);
-            }
-        }
         return InteractionResultHolder.pass(stack);
     }
 

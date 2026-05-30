@@ -45,6 +45,18 @@ public class OrderToCookModClient implements ClientModInitializer {
             }
         });
 
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+            @Override
+            public Identifier getFabricId() {
+                return new Identifier(ModConstants.MOD_ID, "reset_custom_skin_count");
+            }
+
+            @Override
+            public void reload(ResourceManager manager) {
+                cn.breezeth.ordertocook.client.renderer.CustomerEntityModel.resetCustomSkinCount();
+            }
+        });
+
         WashingTableWaterWorldRenderer.register();
 
         HandledScreens.register(ModScreenHandlers.ORDER_MACHINE_SCREEN_HANDLER, OrderMachineScreen::new);

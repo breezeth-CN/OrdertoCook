@@ -258,7 +258,7 @@ public class ConfigManager {
         if (stack == null || stack.isEmpty() || hunger <= 0) return false;
         Identifier id = Registries.ITEM.getId(stack.getItem());
         if (id == null) return false;
-        String nbt = stackMatchSignature(stack);
+        String nbt = null;
 
         boolean replaced = false;
         for (int i = 0; i < customMenuItems.size(); i++) {
@@ -280,7 +280,6 @@ public class ConfigManager {
     private static synchronized void rebuildCustomMenuNutritionMap() {
         Map<Item, Integer> map = new HashMap<>();
         for (CustomMenuEntry entry : customMenuItems) {
-            if (entry.nbt != null) continue;
             map.put(entry.item, entry.hunger);
         }
         customMenuNutritionMap = map;

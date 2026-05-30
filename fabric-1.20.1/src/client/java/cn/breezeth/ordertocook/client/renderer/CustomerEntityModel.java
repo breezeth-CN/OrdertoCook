@@ -93,7 +93,7 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
                     return false;
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
         }
         String m = DefaultSkinHelper.getModel(fallbackUuid);
         return m != null && "slim".equalsIgnoreCase(m);
@@ -129,7 +129,7 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
             if (filled != null) {
                 resolvedProfile = filled;
             }
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
         }
         if (hasTextures(resolvedProfile)) {
             return resolvedProfile;
@@ -184,7 +184,7 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
                 }
                 return profile;
             }
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
             return fallbackProfile;
         }
     }
@@ -237,6 +237,14 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
     private static Identifier customTextureId(boolean slim, int index) {
         String prefix = slim ? "custom_slim_" : "custom_wide_";
         return new Identifier(ModConstants.MOD_ID, "textures/entity/customs/" + prefix + index + ".png");
+    }
+
+    /**
+     * 重置自定义皮肤计数缓存，在资源包重载时调用。
+     */
+    public static void resetCustomSkinCount() {
+        customWideSkinCount = -1;
+        customSlimSkinCount = -1;
     }
 
     private static boolean resourceExists(Identifier id) {

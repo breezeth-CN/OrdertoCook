@@ -100,7 +100,7 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
             if (result != null && result.profile() != null) {
                 resolvedProfile = result.profile();
             }
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
         }
         if (hasTextures(resolvedProfile)) {
             return resolvedProfile;
@@ -144,7 +144,7 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
                 }
                 return profile;
             }
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
             return fallbackProfile;
         }
     }
@@ -197,6 +197,14 @@ public final class CustomerEntityModel extends GeoModel<CustomerEntity> {
     private static ResourceLocation customTextureId(boolean slim, int index) {
         String prefix = slim ? "custom_slim_" : "custom_wide_";
         return ResourceLocation.fromNamespaceAndPath(ModConstants.MOD_ID, "textures/entity/customs/" + prefix + index + ".png");
+    }
+
+    /**
+     * 重置自定义皮肤计数缓存，在资源包重载时调用。
+     */
+    public static void resetCustomSkinCount() {
+        customWideSkinCount = -1;
+        customSlimSkinCount = -1;
     }
 
     private static boolean resourceExists(ResourceLocation id) {

@@ -2,15 +2,15 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "C",
-    "P"
+    "C C",
+    " B "
   ],
   "key": {
     "C": {
-      "item": "minecraft:bowl"
+      "item": "minecraft:clay_ball"
     },
-    "P": {
-      "item": "minecraft:paper"
+    "B": {
+      "item": "minecraft:brick"
     }
   },
   "result": {

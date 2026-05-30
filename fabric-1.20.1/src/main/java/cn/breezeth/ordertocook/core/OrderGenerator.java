@@ -147,14 +147,14 @@ public class OrderGenerator {
     }
 
     private static int determineOrderType(net.minecraft.util.math.random.Random random, ModConfig config, int level) {
-        int w0 = config.weightWhite;
-        int w1 = config.weightGreen;
-        int w2 = config.weightBlue;
-        int w3 = config.weightPurple;
-        int w4 = config.weightRed;
+        int w0 = Math.max(0, config.weightWhite);
+        int w1 = Math.max(0, config.weightGreen);
+        int w2 = Math.max(0, config.weightBlue);
+        int w3 = Math.max(0, config.weightPurple);
+        int w4 = Math.max(0, config.weightRed);
 
         int baseTotal = w0 + w1 + w2 + w3 + w4;
-        if (baseTotal <= 0) baseTotal = 1;
+        if (baseTotal <= 0) return 0;
         double purplePct = 0.0;
         double redPct = 0.0;
         switch (level) {
@@ -167,14 +167,15 @@ public class OrderGenerator {
             default -> {
             }
         }
-        if (purplePct > 0.0) {
+        if (purplePct > 0.0 && w3 > 0) {
             w3 += Math.max(1, (int) Math.round(baseTotal * purplePct));
         }
-        if (redPct > 0.0) {
+        if (redPct > 0.0 && w4 > 0) {
             w4 += Math.max(1, (int) Math.round(baseTotal * redPct));
         }
 
         int totalWeight = w0 + w1 + w2 + w3 + w4;
+        if (totalWeight <= 0) return 0;
         int randomWeight = random.nextInt(totalWeight);
 
         int currentWeight = 0;

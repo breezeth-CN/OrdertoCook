@@ -486,15 +486,16 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     }
 
     private static double walkInChance(int level) {
+        var cfg = ConfigManager.get();
         return switch (level) {
-            case 1 -> 0.05;
-            case 2 -> 0.10;
-            case 3 -> 0.15;
-            case 4 -> 0.20;
-            case 5 -> 0.30;
-            case 6 -> 0.40;
-            case 7 -> 0.50;
-            case 8 -> 0.70;
+            case 1 -> cfg.walkInChanceLevel1;
+            case 2 -> cfg.walkInChanceLevel2;
+            case 3 -> cfg.walkInChanceLevel3;
+            case 4 -> cfg.walkInChanceLevel4;
+            case 5 -> cfg.walkInChanceLevel5;
+            case 6 -> cfg.walkInChanceLevel6;
+            case 7 -> cfg.walkInChanceLevel7;
+            case 8 -> cfg.walkInChanceLevel8;
             default -> 0.0;
         };
     }

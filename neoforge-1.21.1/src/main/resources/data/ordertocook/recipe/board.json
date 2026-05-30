@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " I ",
+    "PIP",
+    "PIP"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "P": { "tag": "minecraft:planks" }
+  },
+  "result": {
+    "id": "ordertocook:board",
+    "count": 1
+  }
+}

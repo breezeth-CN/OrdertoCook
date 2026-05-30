@@ -2,19 +2,19 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "CCC",
-    "CWC",
-    "PPP"
+    "SIS",
+    "BIB",
+    "BBB"
   ],
   "key": {
-    "C": {
-      "item": "minecraft:cobblestone"
+    "S": {
+      "tag": "minecraft:wooden_slabs"
     },
-    "W": {
-      "item": "minecraft:water_bucket"
+    "I": {
+      "item": "minecraft:iron_ingot"
     },
-    "P": {
-      "tag": "minecraft:planks"
+    "B": {
+      "item": "minecraft:bricks"
     }
   },
   "result": {

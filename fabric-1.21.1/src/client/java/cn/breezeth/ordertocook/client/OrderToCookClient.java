@@ -32,9 +32,12 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
@@ -118,6 +121,20 @@ public final class OrderToCookClient implements ClientModInitializer {
             RiderRenderBridge.clearAll();
         });
         HudRenderCallback.EVENT.register((drawContext, tickDelta) -> renderUiControlHud(drawContext));
+
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
+                new SimpleSynchronousResourceReloadListener() {
+                    @Override
+                    public Identifier getFabricId() {
+                        return Identifier.of("ordertocook", "reset_custom_skin_count");
+                    }
+
+                    @Override
+                    public void reload(net.minecraft.resource.ResourceManager manager) {
+                        cn.breezeth.ordertocook.client.renderer.CustomerEntityModel.resetCustomSkinCount();
+                    }
+                }
+        );
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             if (client.player == null || client.options == null) {

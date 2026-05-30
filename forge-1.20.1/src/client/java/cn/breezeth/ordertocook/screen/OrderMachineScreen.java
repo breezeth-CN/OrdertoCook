@@ -238,8 +238,8 @@ public class OrderMachineScreen extends AbstractContainerScreen<OrderMachineScre
     @Override
     protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
         int progress = menu.getProgress();
-        int cdMinutes = menu.getCooldownMinutes();
-        int totalTicks = cdMinutes * 60 * 20;
+        int cooldownSeconds = menu.getCooldownSeconds();
+        int totalTicks = cooldownSeconds * 20;
         int remainingTicks = Math.max(0, totalTicks - progress);
         
         int totalSeconds = remainingTicks / 20;
@@ -416,25 +416,25 @@ public class OrderMachineScreen extends AbstractContainerScreen<OrderMachineScre
     }
 
     private static int[] orderProbabilitiesPct(int level) {
-        int w0 = ConfigManager.get().weightWhite;
-        int w1 = ConfigManager.get().weightGreen;
-        int w2 = ConfigManager.get().weightBlue;
-        int w3 = ConfigManager.get().weightPurple;
-        int w4 = ConfigManager.get().weightRed;
+        int w0 = Math.max(0, ConfigManager.get().weightWhite);
+        int w1 = Math.max(0, ConfigManager.get().weightGreen);
+        int w2 = Math.max(0, ConfigManager.get().weightBlue);
+        int w3 = Math.max(0, ConfigManager.get().weightPurple);
+        int w4 = Math.max(0, ConfigManager.get().weightRed);
 
         int baseTotal = w0 + w1 + w2 + w3 + w4;
-        if (baseTotal <= 0) baseTotal = 1;
+        if (baseTotal <= 0) return new int[]{100, 0, 0, 0, 0};
 
         int[] bonus = weightBonus(level);
-        if (bonus[0] > 0) {
+        if (bonus[0] > 0 && w3 > 0) {
             w3 += Math.max(1, (int) Math.round(baseTotal * (bonus[0] / 100.0)));
         }
-        if (bonus[1] > 0) {
+        if (bonus[1] > 0 && w4 > 0) {
             w4 += Math.max(1, (int) Math.round(baseTotal * (bonus[1] / 100.0)));
         }
 
         int total = w0 + w1 + w2 + w3 + w4;
-        if (total <= 0) total = 1;
+        if (total <= 0) return new int[]{100, 0, 0, 0, 0};
 
         int p0 = (int) Math.round(w0 * 100.0 / total);
         int p1 = (int) Math.round(w1 * 100.0 / total);

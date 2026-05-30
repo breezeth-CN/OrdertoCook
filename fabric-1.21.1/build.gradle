@@ -63,10 +63,12 @@ dependencies {
 }
 processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
-inputs.property "version", project.version
-filesMatching("fabric.mod.json") {
-expand "version": inputs.properties.version
-}
+    exclude "data/ordertocook/advancements/**"
+    exclude "data/ordertocook/loot_tables/**"
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
 }
 tasks.withType(JavaCompile).configureEach {
 it.options.release = 21

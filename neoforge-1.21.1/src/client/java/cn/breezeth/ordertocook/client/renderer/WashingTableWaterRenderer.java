@@ -58,9 +58,9 @@ public final class WashingTableWaterRenderer implements BlockEntityRenderer<Wash
         matrices.translate(0.5, 0.5, 0.5);
         matrices.mulPose(Axis.YP.rotationDegrees(switch (facing) {
             case NORTH -> 0f;
-            case EAST -> 90f;
+            case EAST -> 270f;
             case SOUTH -> 180f;
-            case WEST -> 270f;
+            case WEST -> 90f;
             default -> 0f;
         }));
         matrices.translate(-0.5, -0.5, -0.5);

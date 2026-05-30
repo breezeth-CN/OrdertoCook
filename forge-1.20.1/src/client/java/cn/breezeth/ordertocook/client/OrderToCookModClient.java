@@ -140,6 +140,9 @@ public final class OrderToCookModClient {
     @SubscribeEvent
     public static void registerClientReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener((ResourceManagerReloadListener) NpcNames::reloadFromClientResources);
+        event.registerReloadListener((ResourceManagerReloadListener) resources ->
+                cn.breezeth.ordertocook.client.renderer.CustomerEntityModel.resetCustomSkinCount()
+        );
     }
 
     @SubscribeEvent

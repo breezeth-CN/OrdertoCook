@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "I C",
+    "BRB",
+    "5 5"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "C": {
+      "item": "minecraft:chest"
+    },
+    "B": {
+      "item": "minecraft:iron_block"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    },
+    "5": {
+      "item": "ordertocook:chef_coin_5"
+    }
+  },
+  "result": {
+    "id": "ordertocook:motorcycle",
+    "count": 1
+  }
+}
