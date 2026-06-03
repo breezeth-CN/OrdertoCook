@@ -26,17 +26,17 @@ public class ModConfig {
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.2")
     public double walkInChanceLevel2 = 0.0;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.3")
-    public double walkInChanceLevel3 = 0.2;
+    public double walkInChanceLevel3 = 0.1;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.4")
-    public double walkInChanceLevel4 = 0.3;
+    public double walkInChanceLevel4 = 0.15;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.5")
-    public double walkInChanceLevel5 = 0.5;
+    public double walkInChanceLevel5 = 0.2;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.6")
-    public double walkInChanceLevel6 = 0.5;
+    public double walkInChanceLevel6 = 0.25;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.7")
-    public double walkInChanceLevel7 = 0.5;
+    public double walkInChanceLevel7 = 0.3;
     @Comment("Walk-in customer chance (0.0 - 1.0) - Lv.8")
-    public double walkInChanceLevel8 = 0.7;
+    public double walkInChanceLevel8 = 0.35;
 
     @Comment("========== Order Generation ==========\nOrder weight (percent) - White")
     public int weightWhite = 50;
@@ -103,6 +103,13 @@ public class ModConfig {
 
     @Comment("========== Countertop / Packaging ==========\nWhether crafting takeout bags consumes leather from shelf (Default: true=consume)")
     public boolean countertopConsumeLeather = true;
+
+    @Comment("========== Compatibility ==========\nEnable VanillaEraFaresChron custom upgrade requirements and reward multipliers. Creates VanillaEraFaresChron.json5 when enabled.")
+    public boolean vanillaEraFaresChronCompat = false;
+    @Comment("Enable SDMShop / SDM Economy digital currency. Uses the configured SDM currency key instead of physical oTc coins.")
+    public boolean sdmShopCurrencyCompat = false;
+    @Comment("SDM Economy currency key used when SDMShop currency compatibility is enabled.")
+    public String sdmShopCurrencyKey = "basic_money";
 
     /*
      * ========== Food Filtering (Removed) ==========

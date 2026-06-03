@@ -61,6 +61,7 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save();
         }
+        VanillaEraFaresChronCompat.loadIfEnabled();
         customMenuItems = loadCustomMenuItems(CUSTOM_MENU_FILE);
         rebuildCustomMenuNutritionMap();
     }
@@ -77,6 +78,7 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save(configFile);
         }
+        VanillaEraFaresChronCompat.loadIfEnabled();
         customMenuItems = loadCustomMenuItems(new File(configFile.getParentFile(), "custom_menu_items.json5"));
         rebuildCustomMenuNutritionMap();
     }
@@ -141,7 +143,18 @@ public class ConfigManager {
         changed |= renameConfigKey(json, "zombieRate", "easterEggCustomerRate");
         changed |= renameConfigKey(json, "tipZombieChance", "tipEasterEggCustomerChance");
         changed |= migrateMinutesToSeconds(json, "orderMachineCdMinutes", "orderMachineRefreshSeconds");
+        changed |= addMissingConfigKey(json, "vanillaEraFaresChronCompat", new JsonPrimitive(false));
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyCompat", new JsonPrimitive(false));
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyKey", new JsonPrimitive("basic_money"));
         return changed;
+    }
+
+    private static boolean addMissingConfigKey(JsonObject json, String key, JsonElement defaultValue) {
+        if (json.containsKey(key)) {
+            return false;
+        }
+        json.put(key, defaultValue);
+        return true;
     }
 
     private static boolean migrateMinutesToSeconds(JsonObject json, String oldKey, String newKey) {
@@ -339,7 +352,7 @@ public class ConfigManager {
             if (!(itemEl instanceof JsonPrimitive ip) || !(hungerEl instanceof JsonPrimitive hp)) {
                 return null;
             }
-            ResourceLocation id = ResourceLocation.tryParse(String.valueOf(ip.getValue()).trim());
+            ResourceLocation id = ModConstants.tryParseResourceLocation(String.valueOf(ip.getValue()).trim());
             if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return null;
             int hunger = Integer.parseInt(String.valueOf(hp.getValue()).trim());
             if (hunger <= 0) return null;

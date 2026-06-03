@@ -3,6 +3,7 @@ package cn.breezeth.ordertocook.core;
 import cn.breezeth.ordertocook.OrderToCookMod;
 import cn.breezeth.ordertocook.config.ConfigManager;
 import cn.breezeth.ordertocook.config.ModConfig;
+import cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat;
 import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.util.DataCompat;
 import net.minecraft.item.Item;
@@ -143,7 +144,7 @@ public class OrderGenerator {
         int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
         int hunger = computeOrderHunger(nbt);
         totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
-        return totalCoin;
+        return VanillaEraFaresChronCompat.applyRewardMultiplier(totalCoin, level);
     }
 
     private static int determineOrderType(net.minecraft.util.math.random.Random random, ModConfig config, int level) {

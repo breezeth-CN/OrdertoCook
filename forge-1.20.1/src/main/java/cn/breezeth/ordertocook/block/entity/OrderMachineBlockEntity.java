@@ -10,6 +10,7 @@ import cn.breezeth.ordertocook.util.ImplementedInventory;
 import org.jetbrains.annotations.Nullable;
 import cn.breezeth.ordertocook.block.OrderMachineBlock;
 import cn.breezeth.ordertocook.config.ConfigManager;
+import cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat;
 import cn.breezeth.ordertocook.util.DataCompat;
 import java.util.ArrayList;
 import java.util.List;
@@ -427,7 +428,18 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         }
 
         int cost = upgradeCost(nextLevel);
+        if (!VanillaEraFaresChronCompat.hasUpgradeRequirements(sp, nextLevel)) {
+            return false;
+        }
+        if (CoinUtils.countCoins(sp) < cost) {
+            sp.closeContainer();
+            sp.displayClientMessage(Component.translatable("message.ordertocook.upgrade_not_enough"), true);
+            return false;
+        }
         try {
+            if (!VanillaEraFaresChronCompat.consumeUpgradeRequirements(sp, nextLevel)) {
+                return false;
+            }
             if (!CoinUtils.tryConsumeWithChange(sp, cost)) {
                 sp.closeContainer();
                 sp.displayClientMessage(Component.translatable("message.ordertocook.upgrade_not_enough"), true);

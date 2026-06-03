@@ -32,6 +32,7 @@ import net.minecraft.server.world.ServerWorld;
 import cn.breezeth.ordertocook.block.OrderMachineBlock;
 import net.minecraft.block.Block;
 import cn.breezeth.ordertocook.config.ConfigManager;
+import cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat;
 import cn.breezeth.ordertocook.util.DataCompat;
 import net.minecraft.item.FoodComponent;
 
@@ -429,7 +430,18 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
         }
 
         int cost = upgradeCost(nextLevel);
+        if (!VanillaEraFaresChronCompat.hasUpgradeRequirements(sp, nextLevel)) {
+            return false;
+        }
+        if (CoinUtils.countCoins(sp) < cost) {
+            sp.closeHandledScreen();
+            sp.sendMessage(Text.translatable("message.ordertocook.upgrade_not_enough"), true);
+            return false;
+        }
         try {
+            if (!VanillaEraFaresChronCompat.consumeUpgradeRequirements(sp, nextLevel)) {
+                return false;
+            }
             if (!CoinUtils.tryConsumeWithChange(sp, cost)) {
                 sp.closeHandledScreen();
                 sp.sendMessage(Text.translatable("message.ordertocook.upgrade_not_enough"), true);

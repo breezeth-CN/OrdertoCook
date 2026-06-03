@@ -11,6 +11,7 @@ public final class ModClientNetworking {
     public static volatile java.util.List<cn.breezeth.ordertocook.block.entity.OrderMachineBlockEntity.RestaurantStats> LAST_RANKING = java.util.Collections.emptyList();
     public static volatile String LAST_OPEN_SCREEN_NAME = "";
     public static volatile String LAST_OPEN_SCREEN_OWNER = "";
+    private static volatile java.util.Map<Integer, java.util.List<ExtraUpgradeRequirement>> VANILLA_ERA_FARES_CHRON_REQUIREMENTS = java.util.Collections.emptyMap();
 
     public static void registerClientReceivers() {
     }
@@ -46,6 +47,10 @@ public final class ModClientNetworking {
         });
     }
 
+    public static void handleVanillaEraFaresChronRequirements(ModNetworking.VanillaEraFaresChronRequirementsS2CPayload payload) {
+        Minecraft.getInstance().execute(() -> VANILLA_ERA_FARES_CHRON_REQUIREMENTS = parseExtraUpgradeRequirementsJson(payload.json()));
+    }
+
     public static void handleRiderAnim(ModNetworking.RiderAnimS2CPayload payload) {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> applyRemoteRiderAnimation(client, payload.playerUuid(), payload.animType(), payload.animate()));
@@ -77,6 +82,17 @@ public final class ModClientNetworking {
         if (client.getConnection() == null) return false;
         ModNetworking.sendToServer(ModNetworking.RestaurantNameQueryC2SPayload.INSTANCE);
         return true;
+    }
+
+    public static boolean sendVanillaEraFaresChronRequirementsQuery() {
+        Minecraft client = Minecraft.getInstance();
+        if (client.getConnection() == null) return false;
+        ModNetworking.sendToServer(ModNetworking.VanillaEraFaresChronRequirementsQueryC2SPayload.INSTANCE);
+        return true;
+    }
+
+    public static java.util.List<ExtraUpgradeRequirement> getVanillaEraFaresChronRequirements(int nextLevel) {
+        return VANILLA_ERA_FARES_CHRON_REQUIREMENTS.getOrDefault(nextLevel, java.util.Collections.emptyList());
     }
 
     public static void sendRiderSound(int soundType, float pitch) {
@@ -134,6 +150,35 @@ public final class ModClientNetworking {
             }
         } catch (Throwable ignored) {}
         return list;
+    }
+
+    private static java.util.Map<Integer, java.util.List<ExtraUpgradeRequirement>> parseExtraUpgradeRequirementsJson(String json) {
+        java.util.Map<Integer, java.util.List<ExtraUpgradeRequirement>> map = new java.util.HashMap<>();
+        try {
+            com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+            for (int level = 1; level <= 8; level++) {
+                com.google.gson.JsonArray arr = root.has(String.valueOf(level))
+                        ? root.getAsJsonArray(String.valueOf(level))
+                        : new com.google.gson.JsonArray();
+                java.util.List<ExtraUpgradeRequirement> list = new java.util.ArrayList<>();
+                for (var element : arr) {
+                    var obj = element.getAsJsonObject();
+                    String translationKey = obj.has("translationKey") ? obj.get("translationKey").getAsString() : "";
+                    String itemId = obj.has("itemId") ? obj.get("itemId").getAsString() : "";
+                    int count = obj.has("count") ? obj.get("count").getAsInt() : 0;
+                    if (!translationKey.isEmpty() && count > 0) {
+                        list.add(new ExtraUpgradeRequirement(translationKey, itemId, count));
+                    }
+                }
+                map.put(level, java.util.Collections.unmodifiableList(list));
+            }
+        } catch (Exception ignored) {
+            return java.util.Collections.emptyMap();
+        }
+        return java.util.Collections.unmodifiableMap(map);
+    }
+
+    public record ExtraUpgradeRequirement(String translationKey, String itemId, int count) {
     }
 
     public static cn.breezeth.ordertocook.block.entity.OrderMachineBlockEntity.RestaurantStats findSelfRestaurant() {

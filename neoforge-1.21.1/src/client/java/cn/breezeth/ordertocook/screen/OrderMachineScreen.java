@@ -456,15 +456,16 @@ public class OrderMachineScreen extends AbstractContainerScreen<OrderMachineScre
     }
 
     private static int walkInChancePct(int level) {
+        var cfg = ConfigManager.get();
         return switch (level) {
-            case 1 -> 5;
-            case 2 -> 10;
-            case 3 -> 15;
-            case 4 -> 20;
-            case 5 -> 30;
-            case 6 -> 40;
-            case 7 -> 50;
-            case 8 -> 70;
+            case 1 -> (int) Math.round(cfg.walkInChanceLevel1 * 100.0);
+            case 2 -> (int) Math.round(cfg.walkInChanceLevel2 * 100.0);
+            case 3 -> (int) Math.round(cfg.walkInChanceLevel3 * 100.0);
+            case 4 -> (int) Math.round(cfg.walkInChanceLevel4 * 100.0);
+            case 5 -> (int) Math.round(cfg.walkInChanceLevel5 * 100.0);
+            case 6 -> (int) Math.round(cfg.walkInChanceLevel6 * 100.0);
+            case 7 -> (int) Math.round(cfg.walkInChanceLevel7 * 100.0);
+            case 8 -> (int) Math.round(cfg.walkInChanceLevel8 * 100.0);
             default -> 0;
         };
     }

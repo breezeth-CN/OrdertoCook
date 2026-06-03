@@ -1,0 +1,1 @@
+This file keeps the Fabric client resources output directory present for IDE classpath refreshes.

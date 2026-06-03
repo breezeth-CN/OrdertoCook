@@ -34,6 +34,7 @@ public class OrderMachineScreen extends HandledScreen<OrderMachineScreenHandler>
         super.init();
         cn.breezeth.ordertocook.compat.JeiCompat.ensureGuiHandlersRegistered();
         cn.breezeth.ordertocook.network.ModClientNetworking.sendRestaurantNameQuery();
+        cn.breezeth.ordertocook.network.ModClientNetworking.sendVanillaEraFaresChronRequirementsQuery();
         int x = (width - backgroundWidth) / 2;
         int y = (height - backgroundHeight) / 2;
         int btnW = 60, btnH = 20;
@@ -304,6 +305,17 @@ public class OrderMachineScreen extends HandledScreen<OrderMachineScreenHandler>
             if (requiredHunger > 0) {
                 lines.add(Text.translatable("screen.ordertocook.order_machine.upgrade.board_hunger", requiredHunger));
             }
+            java.util.List<cn.breezeth.ordertocook.network.ModClientNetworking.ExtraUpgradeRequirement> extraItems =
+                    cn.breezeth.ordertocook.network.ModClientNetworking.getVanillaEraFaresChronRequirements(nextLevel);
+            if (!extraItems.isEmpty()) {
+                lines.add(Text.literal("VanillaEraFaresChron").formatted(Formatting.GRAY));
+                for (cn.breezeth.ordertocook.network.ModClientNetworking.ExtraUpgradeRequirement item : extraItems) {
+                    lines.add(Text.literal("- ")
+                            .append(Text.translatable(item.translationKey()))
+                            .append(Text.literal(" x" + item.count()))
+                            .formatted(Formatting.GRAY));
+                }
+            }
 
             int slotDelta = unlockedSlots(nextLevel) - unlockedSlots(currentLevel);
             if (slotDelta != 0) {
@@ -479,15 +491,16 @@ public class OrderMachineScreen extends HandledScreen<OrderMachineScreenHandler>
     }
 
     private static int walkInChancePct(int level) {
+        var cfg = ConfigManager.get();
         return switch (level) {
-            case 1 -> 5;
-            case 2 -> 10;
-            case 3 -> 15;
-            case 4 -> 20;
-            case 5 -> 30;
-            case 6 -> 40;
-            case 7 -> 50;
-            case 8 -> 70;
+            case 1 -> (int) Math.round(cfg.walkInChanceLevel1 * 100.0);
+            case 2 -> (int) Math.round(cfg.walkInChanceLevel2 * 100.0);
+            case 3 -> (int) Math.round(cfg.walkInChanceLevel3 * 100.0);
+            case 4 -> (int) Math.round(cfg.walkInChanceLevel4 * 100.0);
+            case 5 -> (int) Math.round(cfg.walkInChanceLevel5 * 100.0);
+            case 6 -> (int) Math.round(cfg.walkInChanceLevel6 * 100.0);
+            case 7 -> (int) Math.round(cfg.walkInChanceLevel7 * 100.0);
+            case 8 -> (int) Math.round(cfg.walkInChanceLevel8 * 100.0);
             default -> 0;
         };
     }

@@ -104,6 +104,13 @@ public class ModConfig {
     @Comment("========== Countertop / Packaging ==========\nWhether crafting takeout bags consumes leather from shelf (Default: true=consume)")
     public boolean countertopConsumeLeather = true;
 
+    @Comment("========== Compatibility ==========\nEnable VanillaEraFaresChron custom upgrade requirements and reward multipliers. Creates VanillaEraFaresChron.json5 when enabled.")
+    public boolean vanillaEraFaresChronCompat = false;
+    @Comment("Enable SDMShop / SDM Economy digital currency. Uses the configured SDM currency key instead of physical oTc coins.")
+    public boolean sdmShopCurrencyCompat = false;
+    @Comment("SDM Economy currency key used when SDMShop currency compatibility is enabled.")
+    public String sdmShopCurrencyKey = "basic_money";
+
     /*
      * ========== Food Filtering (Removed) ==========
      * Previous versions provided blacklist/whitelist to filter foods from the "all item pool" for orders.

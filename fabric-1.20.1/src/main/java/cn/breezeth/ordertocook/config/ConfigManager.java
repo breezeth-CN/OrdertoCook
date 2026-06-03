@@ -59,6 +59,7 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save();
         }
+        VanillaEraFaresChronCompat.loadIfEnabled();
         customMenuItems = loadCustomMenuItems(CUSTOM_MENU_FILE);
         rebuildCustomMenuNutritionMap();
     }
@@ -72,6 +73,7 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save(configFile);
         }
+        VanillaEraFaresChronCompat.loadIfEnabled();
         customMenuItems = loadCustomMenuItems(new File(configFile.getParentFile(), "custom_menu_items.json5"));
         rebuildCustomMenuNutritionMap();
     }
@@ -141,7 +143,18 @@ public class ConfigManager {
         changed |= renameConfigKey(json, "zombieRate", "easterEggCustomerRate");
         changed |= renameConfigKey(json, "tipZombieChance", "tipEasterEggCustomerChance");
         changed |= migrateMinutesToSeconds(json, "orderMachineCdMinutes", "orderMachineRefreshSeconds");
+        changed |= addMissingConfigKey(json, "vanillaEraFaresChronCompat", new JsonPrimitive(false));
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyCompat", new JsonPrimitive(false));
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyKey", new JsonPrimitive("basic_money"));
         return changed;
+    }
+
+    private static boolean addMissingConfigKey(JsonObject json, String key, JsonElement defaultValue) {
+        if (json.containsKey(key)) {
+            return false;
+        }
+        json.put(key, defaultValue);
+        return true;
     }
 
     private static boolean migrateMinutesToSeconds(JsonObject json, String oldKey, String newKey) {

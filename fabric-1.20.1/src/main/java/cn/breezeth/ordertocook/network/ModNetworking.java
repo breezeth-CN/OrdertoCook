@@ -25,6 +25,8 @@ public final class ModNetworking {
     private static final Identifier RESTAURANT_RENAME_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "restaurant_rename_c2s");
     private static final Identifier RESTAURANT_NAME_QUERY_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "restaurant_name_query_c2s");
     private static final Identifier RESTAURANT_NAME_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "restaurant_name_s2c");
+    private static final Identifier VANILLA_ERA_FARES_CHRON_REQUIREMENTS_QUERY_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "vanilla_era_fares_chron_requirements_query_c2s");
+    private static final Identifier VANILLA_ERA_FARES_CHRON_REQUIREMENTS_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "vanilla_era_fares_chron_requirements_s2c");
     private static final Identifier OPEN_MOTORCYCLE_COOLER_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "open_motorcycle_cooler_c2s");
     private static final Identifier START_WASHING_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "start_washing_c2s");
     private static final Identifier STOP_WASHING_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "stop_washing_c2s");
@@ -164,6 +166,11 @@ public final class ModNetworking {
             out.writeString(owner, 64);
             ServerPlayNetworking.send(player, RESTAURANT_NAME_S2C, out);
         });
+        ServerPlayNetworking.registerGlobalReceiver(VANILLA_ERA_FARES_CHRON_REQUIREMENTS_QUERY_C2S, (server, player, handler, buf, responseSender) -> {
+            PacketByteBuf out = new PacketByteBuf(Unpooled.buffer());
+            out.writeString(buildVanillaEraFaresChronRequirementsJson(), 32767);
+            ServerPlayNetworking.send(player, VANILLA_ERA_FARES_CHRON_REQUIREMENTS_S2C, out);
+        });
 
         ServerPlayNetworking.registerGlobalReceiver(OPEN_MOTORCYCLE_COOLER_C2S, (server, player, handler, buf, responseSender) -> {
             server.execute(() -> {
@@ -279,5 +286,21 @@ public final class ModNetworking {
             out.writeBoolean(animate);
             ServerPlayNetworking.send(target, RIDER_ANIM_S2C, out);
         }
+    }
+
+    private static String buildVanillaEraFaresChronRequirementsJson() {
+        com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+        for (int level = 1; level <= 8; level++) {
+            com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+            for (var item : cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat.getUpgradeRequirementViews(level)) {
+                com.google.gson.JsonObject obj = new com.google.gson.JsonObject();
+                obj.addProperty("translationKey", item.translationKey());
+                obj.addProperty("itemId", item.itemId());
+                obj.addProperty("count", item.count());
+                arr.add(obj);
+            }
+            root.add(String.valueOf(level), arr);
+        }
+        return new com.google.gson.Gson().toJson(root);
     }
 }

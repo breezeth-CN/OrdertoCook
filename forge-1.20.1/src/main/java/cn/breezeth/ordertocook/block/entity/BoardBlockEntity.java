@@ -16,6 +16,7 @@ import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import cn.breezeth.ordertocook.core.ModConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -101,7 +102,7 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
             HashSet<ResourceLocation> seen = new HashSet<>();
             int write = 0;
             for (int i = 0; i < list.size() && write < templates.size(); i++) {
-                ResourceLocation id = ResourceLocation.tryParse(list.getString(i));
+                ResourceLocation id = ModConstants.tryParseResourceLocation(list.getString(i));
                 if (id == null) continue;
                 if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
                 if (!seen.add(id)) continue;

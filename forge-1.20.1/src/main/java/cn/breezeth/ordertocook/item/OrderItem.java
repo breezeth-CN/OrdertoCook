@@ -216,7 +216,7 @@ public class OrderItem extends Item {
     private static ResourceLocation normalizeItemIdentifier(String raw) {
         String k = raw.trim();
         if (k.contains(":")) {
-            ResourceLocation id = ResourceLocation.tryParse(k);
+            ResourceLocation id = ModConstants.tryParseResourceLocation(k);
             if (id != null) return id;
         }
         if (k.startsWith("item.") || k.startsWith("block.")) {
@@ -232,16 +232,16 @@ public class OrderItem extends Item {
             if (dot > 0) {
                 String ns = tmp.substring(0, dot);
                 String path = tmp.substring(dot + 1);
-                return ResourceLocation.tryParse(ns + ":" + path);
+                return ModConstants.tryParseResourceLocation(ns + ":" + path);
             }
         }
         if (k.contains(".")) {
             int dot = k.indexOf('.');
             String ns = k.substring(0, dot);
             String path = k.substring(dot + 1);
-            return ResourceLocation.tryParse(ns + ":" + path);
+            return ModConstants.tryParseResourceLocation(ns + ":" + path);
         }
-        return ResourceLocation.tryParse(k);
+        return ModConstants.tryParseResourceLocation(k);
     }
 }
 

@@ -19,6 +19,10 @@ final class ModNetworkingClientBridge {
         invoke("handleRestaurantName", new Class<?>[] { ModNetworking.RestaurantNameS2CPayload.class }, payload);
     }
 
+    static void handleVanillaEraFaresChronRequirements(ModNetworking.VanillaEraFaresChronRequirementsS2CPayload payload, Supplier<net.minecraftforge.network.NetworkEvent.Context> context) {
+        invoke("handleVanillaEraFaresChronRequirements", new Class<?>[] { ModNetworking.VanillaEraFaresChronRequirementsS2CPayload.class }, payload);
+    }
+
     static void handleRiderAnim(ModNetworking.RiderAnimS2CPayload payload, Supplier<net.minecraftforge.network.NetworkEvent.Context> context) {
         invoke("handleRiderAnim", new Class<?>[] { ModNetworking.RiderAnimS2CPayload.class }, payload);
     }

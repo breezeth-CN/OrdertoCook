@@ -97,10 +97,14 @@ mixin {
 
 jarJar.enable()
 
+def fabric1201RecipesDir = rootProject.findProject(':fabric-1.20.1') != null
+        ? rootProject.project(':fabric-1.20.1').file('src/main/resources/data/ordertocook/recipes')
+        : file('../fabric-1.20.1/src/main/resources/data/ordertocook/recipes')
+
 processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     inputs.property "version", project.version
-    from("${project(':fabric-1.20.1').projectDir}/src/main/resources/data/ordertocook/recipes") {
+    from(fabric1201RecipesDir) {
         into "data/ordertocook/recipes"
     }
     filesMatching("META-INF/mods.toml") {

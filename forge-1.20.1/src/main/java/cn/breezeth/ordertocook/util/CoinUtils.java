@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.Method;
 import net.minecraft.core.registries.BuiltInRegistries;
+import cn.breezeth.ordertocook.core.ModConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -16,6 +18,13 @@ import cn.breezeth.ordertocook.config.ConfigManager;
 
 public final class CoinUtils {
     private CoinUtils() {}
+
+    public static int countCoins(Player player) {
+        if (isSdmShopCurrencyConfigured()) {
+            return clampToInt(SdmCurrencyBridge.getMoney(player, getSdmCurrencyKey()));
+        }
+        return countCoins(player.getInventory());
+    }
 
     public static int countCoins(Inventory inv) {
         Item custom = getCustomCurrencyItem();
@@ -45,6 +54,9 @@ public final class CoinUtils {
     }
 
     public static boolean tryConsumeWithChange(Player player, int amount) {
+        if (isSdmShopCurrencyConfigured()) {
+            return SdmCurrencyBridge.tryConsume(player, getSdmCurrencyKey(), amount);
+        }
         Inventory inv = player.getInventory();
         return tryConsumeWithChangeInternal(player, inv, amount);
     }
@@ -141,12 +153,19 @@ public final class CoinUtils {
     }
 
     public static void giveCoins(Player player, int amount) {
+        if (amount <= 0) return;
+        if (isSdmShopCurrencyConfigured()) {
+            if (!SdmCurrencyBridge.addMoney(player, getSdmCurrencyKey(), amount)) {
+                SdmCurrencyBridge.warnOnce("Failed to add SDM currency; oTc fallback is disabled because sdmShopCurrencyCompat is enabled.");
+            }
+            return;
+        }
         String customId = ConfigManager.get().customCurrencyItem;
         if (customId != null && !customId.isBlank()) {
-            ResourceLocation id = ResourceLocation.tryParse(customId);
+            ResourceLocation id = ModConstants.tryParseResourceLocation(customId);
             Item item = id != null ? BuiltInRegistries.ITEM.get(id) : null;
             if (item != null && item != net.minecraft.world.item.Items.AIR) {
-                // 如果是自定义物品，直接发放对应数量
+                // Custom currency items are paid as a direct item stack.
                 player.getInventory().placeItemBackInInventory(new ItemStack(item, amount));
                 return;
             }
@@ -172,9 +191,165 @@ public final class CoinUtils {
     private static Item getCustomCurrencyItem() {
         String customId = ConfigManager.get().customCurrencyItem;
         if (customId == null || customId.isBlank()) return null;
-        ResourceLocation id = ResourceLocation.tryParse(customId);
+        ResourceLocation id = ModConstants.tryParseResourceLocation(customId);
         Item item = id != null ? BuiltInRegistries.ITEM.get(id) : null;
         if (item == null || item == net.minecraft.world.item.Items.AIR) return null;
         return item;
+    }
+
+    private static boolean isSdmShopCurrencyConfigured() {
+        return ConfigManager.get().sdmShopCurrencyCompat;
+    }
+
+    private static String getSdmCurrencyKey() {
+        String key = ConfigManager.get().sdmShopCurrencyKey;
+        return key == null || key.isBlank() ? "basic_money" : key.trim();
+    }
+
+    private static int clampToInt(long value) {
+        if (value <= 0L) return 0;
+        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+    }
+
+    private static final class SdmCurrencyBridge {
+        private static final String CLASS_NAME = "net.sixik.sdm_economy.api.CurrencyHelper";
+        private static final String BASIC_CLASS_NAME = "net.sixik.sdm_economy.api.CurrencyHelper$Basic";
+        private static Method addMoney;
+        private static Method setMoney;
+        private static Method getMoney;
+        private static Method basicAddMoney;
+        private static Method basicSetMoney;
+        private static Method basicGetMoney;
+        private static boolean resolved;
+        private static boolean available;
+        private static boolean warned;
+
+        static boolean isAvailable() {
+            resolve();
+            return available;
+        }
+
+        static long getMoney(Player player, String currencyKey) {
+            resolve();
+            if (!available) {
+                warnOnce("SDM Economy CurrencyHelper was not found; returning 0 balance.");
+                return 0L;
+            }
+            try {
+                Object value = invokeGetMoney(player, currencyKey);
+                return value instanceof Number number ? number.longValue() : 0L;
+            } catch (Throwable e) {
+                warnOnce("Failed to read SDM currency balance: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                return 0L;
+            }
+        }
+
+        static boolean addMoney(Player player, String currencyKey, long amount) {
+            resolve();
+            if (!available || amount == 0L) return available;
+            try {
+                invokeAddMoney(player, currencyKey, amount);
+                return true;
+            } catch (Throwable e) {
+                warnOnce("Failed to add SDM currency: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                return false;
+            }
+        }
+
+        static boolean tryConsume(Player player, String currencyKey, long amount) {
+            if (amount <= 0L) return true;
+            long current = getMoney(player, currencyKey);
+            if (current < amount) return false;
+            try {
+                invokeSetMoney(player, currencyKey, current - amount);
+                return true;
+            } catch (Throwable e) {
+                warnOnce("Failed to consume SDM currency: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                return false;
+            }
+        }
+
+        private static void resolve() {
+            if (resolved) return;
+            resolved = true;
+            try {
+                Class<?> helper = Class.forName(CLASS_NAME);
+                addMoney = find(helper, "addMoney");
+                setMoney = find(helper, "setMoney");
+                getMoney = find(helper, "getMoney");
+                try {
+                    Class<?> basicHelper = Class.forName(BASIC_CLASS_NAME);
+                    basicAddMoney = findBasic(basicHelper, "addMoney");
+                    basicSetMoney = findBasic(basicHelper, "setMoney");
+                    basicGetMoney = findBasic(basicHelper, "getMoney");
+                } catch (ClassNotFoundException ignored) {
+                }
+                available = (addMoney != null && setMoney != null && getMoney != null)
+                        || (basicAddMoney != null && basicSetMoney != null && basicGetMoney != null);
+            } catch (ClassNotFoundException ignored) {
+                available = false;
+            }
+        }
+
+        private static Method find(Class<?> type, String name) {
+            for (Method method : type.getMethods()) {
+                Class<?>[] params = method.getParameterTypes();
+                if (method.getName().equals(name) && params.length == 3 && params[1] == String.class) {
+                    return method;
+                }
+            }
+            return null;
+        }
+
+        private static Method findBasic(Class<?> type, String name) {
+            for (Method method : type.getMethods()) {
+                Class<?>[] params = method.getParameterTypes();
+                if (method.getName().equals(name) && (params.length == 1 || params.length == 2)) {
+                    return method;
+                }
+            }
+            return null;
+        }
+
+        private static Object invokeGetMoney(Player player, String currencyKey) throws Exception {
+            if (getMoney != null) {
+                try {
+                    return getMoney.invoke(null, player, currencyKey);
+                } catch (IllegalArgumentException e) {
+                    if (basicGetMoney == null || !"basic_money".equals(currencyKey)) throw e;
+                }
+            }
+            return basicGetMoney.invoke(null, player);
+        }
+
+        private static void invokeAddMoney(Player player, String currencyKey, long amount) throws Exception {
+            if (addMoney != null) {
+                try {
+                    addMoney.invoke(null, player, currencyKey, amount);
+                    return;
+                } catch (IllegalArgumentException e) {
+                    if (basicAddMoney == null || !"basic_money".equals(currencyKey)) throw e;
+                }
+            }
+            basicAddMoney.invoke(null, player, amount);
+        }
+
+        private static void invokeSetMoney(Player player, String currencyKey, long amount) throws Exception {
+            if (setMoney != null) {
+                try {
+                    setMoney.invoke(null, player, currencyKey, amount);
+                    return;
+                } catch (IllegalArgumentException e) {
+                    if (basicSetMoney == null || !"basic_money".equals(currencyKey)) throw e;
+                }
+            }
+            basicSetMoney.invoke(null, player, amount);
+        }
+
+        static void warnOnce(String message) {
+            if (warned) return;
+            warned = true;
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.warn("[OrderToCook] {}", message);
+        }
     }
 }

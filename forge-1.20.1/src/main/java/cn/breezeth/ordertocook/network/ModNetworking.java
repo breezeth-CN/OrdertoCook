@@ -90,6 +90,17 @@ public final class ModNetworking {
         public String owner() { return owner; }
     }
 
+    public static final class VanillaEraFaresChronRequirementsQueryC2SPayload {
+        public static final VanillaEraFaresChronRequirementsQueryC2SPayload INSTANCE = new VanillaEraFaresChronRequirementsQueryC2SPayload();
+        private VanillaEraFaresChronRequirementsQueryC2SPayload() {}
+    }
+
+    public static final class VanillaEraFaresChronRequirementsS2CPayload {
+        private final String json;
+        public VanillaEraFaresChronRequirementsS2CPayload(String json) { this.json = json; }
+        public String json() { return json; }
+    }
+
     public static final class ToggleMotorcycleLightPayload {
         public static final ToggleMotorcycleLightPayload INSTANCE = new ToggleMotorcycleLightPayload();
         private ToggleMotorcycleLightPayload() {}
@@ -160,6 +171,11 @@ public final class ModNetworking {
         });
         registerClient(RestaurantNameS2CPayload.class, (msg, buf) -> { buf.writeUtf(msg.name(), 128); buf.writeUtf(msg.owner(), 64); },
                 buf -> new RestaurantNameS2CPayload(buf.readUtf(128), buf.readUtf(64)), ModNetworkingClientBridge::handleRestaurantName);
+
+        registerServer(VanillaEraFaresChronRequirementsQueryC2SPayload.class, (msg, buf) -> {}, buf -> VanillaEraFaresChronRequirementsQueryC2SPayload.INSTANCE, (msg, player) ->
+                sendToPlayer(player, new VanillaEraFaresChronRequirementsS2CPayload(buildVanillaEraFaresChronRequirementsJson())));
+        registerClient(VanillaEraFaresChronRequirementsS2CPayload.class, (msg, buf) -> buf.writeUtf(msg.json(), 32767),
+                buf -> new VanillaEraFaresChronRequirementsS2CPayload(buf.readUtf(32767)), ModNetworkingClientBridge::handleVanillaEraFaresChronRequirements);
 
         registerServer(ToggleMotorcycleLightPayload.class, (msg, buf) -> {}, buf -> ToggleMotorcycleLightPayload.INSTANCE, (msg, player) -> {
             MotorcycleEntity motorcycle = MotorcycleEntity.fromVehicle(player.getVehicle());
@@ -267,5 +283,21 @@ public final class ModNetworking {
         for (var target : player.serverLevel().players()) {
             if (target != player) sendToPlayer(target, new RiderAnimS2CPayload(player.getUUID(), payload.animType(), payload.animate()));
         }
+    }
+
+    private static String buildVanillaEraFaresChronRequirementsJson() {
+        com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+        for (int level = 1; level <= 8; level++) {
+            com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+            for (var item : cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat.getUpgradeRequirementViews(level)) {
+                com.google.gson.JsonObject obj = new com.google.gson.JsonObject();
+                obj.addProperty("translationKey", item.translationKey());
+                obj.addProperty("itemId", item.itemId());
+                obj.addProperty("count", item.count());
+                arr.add(obj);
+            }
+            root.add(String.valueOf(level), arr);
+        }
+        return new com.google.gson.Gson().toJson(root);
     }
 }

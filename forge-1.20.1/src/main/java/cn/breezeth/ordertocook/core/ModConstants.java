@@ -1,7 +1,21 @@
 package cn.breezeth.ordertocook.core;
 
+import net.minecraft.resources.ResourceLocation;
+
 public final class ModConstants {
     private ModConstants() {}
+
+    /**
+     * 兼容 1.20.1 缺失的 ResourceLocation.tryParse()。<br>
+     * 1.21+ 原生提供此方法，1.20.1 需要手动 try-catch。
+     */
+    public static ResourceLocation tryParseResourceLocation(String str) {
+        try {
+            return new ResourceLocation(str);
+        } catch (Exception e) {
+            return null;
+        }
+    }
     public static final String MOD_ID = "ordertocook";
     
     // NBT Keys

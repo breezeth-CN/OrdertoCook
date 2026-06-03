@@ -141,7 +141,17 @@ public class ConfigManager {
         changed |= renameConfigKey(json, "zombieRate", "easterEggCustomerRate");
         changed |= renameConfigKey(json, "tipZombieChance", "tipEasterEggCustomerChance");
         changed |= migrateMinutesToSeconds(json, "orderMachineCdMinutes", "orderMachineRefreshSeconds");
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyCompat", new JsonPrimitive(false));
+        changed |= addMissingConfigKey(json, "sdmShopCurrencyKey", new JsonPrimitive("basic_money"));
         return changed;
+    }
+
+    private static boolean addMissingConfigKey(JsonObject json, String key, JsonElement value) {
+        if (json.containsKey(key)) {
+            return false;
+        }
+        json.put(key, value);
+        return true;
     }
 
     private static boolean migrateMinutesToSeconds(JsonObject json, String oldKey, String newKey) {

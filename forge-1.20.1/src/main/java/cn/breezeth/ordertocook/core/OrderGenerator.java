@@ -3,6 +3,7 @@ package cn.breezeth.ordertocook.core;
 import cn.breezeth.ordertocook.OrderToCookMod;
 import cn.breezeth.ordertocook.config.ConfigManager;
 import cn.breezeth.ordertocook.config.ModConfig;
+import cn.breezeth.ordertocook.config.VanillaEraFaresChronCompat;
 import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.util.DataCompat;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import cn.breezeth.ordertocook.core.ModConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.food.FoodProperties;
@@ -143,7 +145,7 @@ public class OrderGenerator {
         int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
         int hunger = computeOrderHunger(nbt);
         totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
-        return totalCoin;
+        return VanillaEraFaresChronCompat.applyRewardMultiplier(totalCoin, level);
     }
 
     private static int determineOrderType(net.minecraft.util.RandomSource random, ModConfig config, int level) {
@@ -301,7 +303,7 @@ public class OrderGenerator {
         CompoundTag foodList = nbt.getCompound(ModConstants.NBT_FOOD_LIST);
         int sum = 0;
         for (String key : foodList.getAllKeys()) {
-            ResourceLocation id = ResourceLocation.tryParse(key);
+            ResourceLocation id = ModConstants.tryParseResourceLocation(key);
             if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) continue;
             Item item = BuiltInRegistries.ITEM.get(id);
             int nutrition = ConfigManager.getCustomMenuNutrition(item);
