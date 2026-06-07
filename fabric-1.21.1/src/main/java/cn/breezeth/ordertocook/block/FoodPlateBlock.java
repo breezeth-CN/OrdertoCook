@@ -39,7 +39,16 @@ import org.jetbrains.annotations.Nullable;
 public class FoodPlateBlock extends BlockWithEntity {
     public static final MapCodec<FoodPlateBlock> CODEC = createCodec(FoodPlateBlock::new);
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
-    public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
+    public static final int MAX_STAGE = 40;
+    public static final IntProperty STAGE = IntProperty.of("stage", 0, MAX_STAGE);
+
+    public static boolean isEatingStage(int stage) {
+        return stage > 0 && !isDirtyStage(stage);
+    }
+
+    public static boolean isDirtyStage(int stage) {
+        return stage > 0 && ((stage - 1) % 4) == 3;
+    }
     private static final VoxelShape SHAPE = VoxelShapes.union(
             Block.createCuboidShape(1, 0, 1, 15, 2, 15),
             Block.createCuboidShape(3, 2, 3, 13, 5, 13)
@@ -123,7 +132,7 @@ public class FoodPlateBlock extends BlockWithEntity {
             ItemStack stack = foodPlateBe.getPlateStack();
             if (!stack.isEmpty()) {
                 // 检查是否是正在吃东西的阶段
-                if (state.contains(STAGE) && state.get(STAGE) < 4) {
+                if (state.contains(STAGE) && isEatingStage(state.get(STAGE))) {
                     wasEating = true;
                 }
 
@@ -136,7 +145,7 @@ public class FoodPlateBlock extends BlockWithEntity {
                 foodPlateBe.setPlateStack(ItemStack.EMPTY);
             }
         }
-        if (state.contains(STAGE) && state.get(STAGE) == 4) {
+        if (state.contains(STAGE) && isDirtyStage(state.get(STAGE))) {
             world.playSound(null, pos, ModSounds.PLATE_PLACE, SoundCategory.BLOCKS, 0.75f, 0.95f + world.random.nextFloat() * 0.1f);
         } else {
             world.playSound(null, pos, ModSounds.FOOD_PLATE_PLACE, SoundCategory.BLOCKS, 1.0f, 1.0f);

@@ -224,11 +224,6 @@ public final class CoinUtils {
         private static boolean available;
         private static boolean warned;
 
-        static boolean isAvailable() {
-            resolve();
-            return available;
-        }
-
         static long getMoney(Player player, String currencyKey) {
             resolve();
             if (!available) {

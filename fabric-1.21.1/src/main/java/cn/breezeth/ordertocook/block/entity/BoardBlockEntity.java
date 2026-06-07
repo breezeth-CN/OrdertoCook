@@ -58,6 +58,7 @@ public class BoardBlockEntity extends BlockEntity implements NamedScreenHandlerF
     @Override
     protected void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         super.readNbt(nbt, registryLookup);
+        clearTemplates();
         Inventories.readNbt(nbt, templates, registryLookup);
         defaultsInitialized = nbt.getBoolean("DefaultsInitialized");
         sortMode = nbt.contains("SortMode") ? nbt.getInt("SortMode") : 0;
@@ -66,6 +67,12 @@ public class BoardBlockEntity extends BlockEntity implements NamedScreenHandlerF
             defaultsInitialized = true;
         }
         compactAndSort();
+    }
+
+    private void clearTemplates() {
+        for (int i = 0; i < templates.size(); i++) {
+            templates.set(i, ItemStack.EMPTY);
+        }
     }
 
     public NbtCompound toCompactItemNbt() {

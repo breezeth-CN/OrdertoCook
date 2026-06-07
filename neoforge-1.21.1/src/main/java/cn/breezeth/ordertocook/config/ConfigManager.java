@@ -16,6 +16,8 @@ import net.neoforged.fml.loading.FMLPaths;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,7 +28,7 @@ import java.util.regex.Pattern;
 
 public class ConfigManager {
     private static final class CustomMenuEntry {
-        final Item item;
+        Item item;
         final ResourceLocation itemId;
         final int hunger;
         final String nbt;
@@ -48,6 +50,8 @@ public class ConfigManager {
     private static final File CONFIG_DIR = FMLPaths.CONFIGDIR.get().resolve("ordertocook").toFile();
     private static final File CONFIG_FILE = new File(CONFIG_DIR, ModConstants.MOD_ID + ".json5"); // Use .json5 to imply comments support
     private static final File CUSTOM_MENU_FILE = new File(CONFIG_DIR, "custom_menu_items.json5");
+    private static File activeCustomMenuFile = CUSTOM_MENU_FILE;
+    private static long activeCustomMenuFileLastModified = -1L;
 
     public static void load() {
         if (!CONFIG_DIR.exists()) {
@@ -61,7 +65,9 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save();
         }
-        customMenuItems = loadCustomMenuItems(CUSTOM_MENU_FILE);
+        activeCustomMenuFile = CUSTOM_MENU_FILE;
+        customMenuItems = loadCustomMenuItems(activeCustomMenuFile);
+        activeCustomMenuFileLastModified = activeCustomMenuFile.exists() ? activeCustomMenuFile.lastModified() : -1L;
         rebuildCustomMenuNutritionMap();
     }
 
@@ -77,7 +83,9 @@ public class ConfigManager {
         if (config != null && sanitize(config)) {
             save(configFile);
         }
-        customMenuItems = loadCustomMenuItems(new File(configFile.getParentFile(), "custom_menu_items.json5"));
+        activeCustomMenuFile = new File(configFile.getParentFile(), "custom_menu_items.json5");
+        customMenuItems = loadCustomMenuItems(activeCustomMenuFile);
+        activeCustomMenuFileLastModified = activeCustomMenuFile.exists() ? activeCustomMenuFile.lastModified() : -1L;
         rebuildCustomMenuNutritionMap();
     }
 
@@ -227,15 +235,23 @@ public class ConfigManager {
         RUNTIME_DEV_MODE = false;
         customMenuNutritionMap = null;
         customMenuItems = new ArrayList<>();
+        activeCustomMenuFileLastModified = -1L;
     }
 
     public static int getCustomMenuNutrition(Item item) {
         if (config == null) {
             load();
         }
+        reloadCustomMenuItemsIfChanged();
         if (item == null) return 0;
         if (customMenuNutritionMap == null) {
             rebuildCustomMenuNutritionMap();
+        }
+        for (CustomMenuEntry entry : customMenuItems) {
+            if (resolveEntryItem(entry) == item) {
+                customMenuNutritionMap.put(item, entry.hunger);
+                return entry.hunger;
+            }
         }
         return customMenuNutritionMap.getOrDefault(item, 0);
     }
@@ -244,6 +260,7 @@ public class ConfigManager {
         if (config == null) {
             load();
         }
+        reloadCustomMenuItemsIfChanged();
         if (stack == null || stack.isEmpty()) return 0;
         if (customMenuNutritionMap == null) {
             rebuildCustomMenuNutritionMap();
@@ -251,7 +268,7 @@ public class ConfigManager {
         String signature = stackMatchSignature(stack);
         String customData = stackCustomDataString(stack);
         for (CustomMenuEntry entry : customMenuItems) {
-            if (entry.item != stack.getItem()) continue;
+            if (resolveEntryItem(entry) != stack.getItem()) continue;
             if (entry.nbt == null) continue;
             if (java.util.Objects.equals(entry.nbt, signature) || java.util.Objects.equals(entry.nbt, customData)) {
                 return entry.hunger;
@@ -272,7 +289,7 @@ public class ConfigManager {
         boolean replaced = false;
         for (int i = 0; i < customMenuItems.size(); i++) {
             CustomMenuEntry entry = customMenuItems.get(i);
-            if (entry.item != stack.getItem()) continue;
+            if (!java.util.Objects.equals(entry.itemId, id)) continue;
             if (!java.util.Objects.equals(entry.nbt, nbt)) continue;
             customMenuItems.set(i, new CustomMenuEntry(stack.getItem(), id, hunger, nbt));
             replaced = true;
@@ -282,16 +299,45 @@ public class ConfigManager {
             customMenuItems.add(new CustomMenuEntry(stack.getItem(), id, hunger, nbt));
         }
         rebuildCustomMenuNutritionMap();
-        writeCustomMenuItemsFile(CUSTOM_MENU_FILE, customMenuItems);
+        writeCustomMenuItemsFile(activeCustomMenuFile, customMenuItems);
+        activeCustomMenuFileLastModified = activeCustomMenuFile != null && activeCustomMenuFile.exists() ? activeCustomMenuFile.lastModified() : -1L;
         return true;
+    }
+
+    private static synchronized void reloadCustomMenuItemsIfChanged() {
+        File file = activeCustomMenuFile != null ? activeCustomMenuFile : CUSTOM_MENU_FILE;
+        if (file == null || !file.exists()) {
+            return;
+        }
+        long lastModified = file.lastModified();
+        if (lastModified <= 0L || lastModified == activeCustomMenuFileLastModified) {
+            return;
+        }
+        customMenuItems = loadCustomMenuItems(file);
+        activeCustomMenuFileLastModified = lastModified;
+        rebuildCustomMenuNutritionMap();
+        OrderToCookMod.LOGGER.info("Reloaded custom menu items config: {} entries from {}", customMenuItems.size(), file.getAbsolutePath());
     }
 
     private static synchronized void rebuildCustomMenuNutritionMap() {
         Map<Item, Integer> map = new HashMap<>();
         for (CustomMenuEntry entry : customMenuItems) {
-            map.put(entry.item, entry.hunger);
+            Item item = resolveEntryItem(entry);
+            if (item != null) {
+                map.put(item, entry.hunger);
+            }
         }
         customMenuNutritionMap = map;
+    }
+
+    private static Item resolveEntryItem(CustomMenuEntry entry) {
+        if (entry.item != null) {
+            return entry.item;
+        }
+        if (entry.itemId != null && BuiltInRegistries.ITEM.containsKey(entry.itemId)) {
+            entry.item = BuiltInRegistries.ITEM.get(entry.itemId);
+        }
+        return entry.item;
     }
 
     private static List<CustomMenuEntry> loadCustomMenuItems(File file) {
@@ -301,7 +347,7 @@ public class ConfigManager {
             return entries;
         }
         try {
-            JsonObject root = JANKSON.load(file);
+            JsonObject root = JANKSON.load(stripBom(Files.readString(file.toPath(), StandardCharsets.UTF_8)));
             JsonElement itemsElement = root.get("items");
             if (itemsElement instanceof JsonArray arr) {
                 for (JsonElement element : arr) {
@@ -322,6 +368,18 @@ public class ConfigManager {
     }
 
     private static void writeCustomMenuItemsFile(File file, List<CustomMenuEntry> entries) {
+        if (file == null) {
+            file = CUSTOM_MENU_FILE;
+        }
+        if (entries.isEmpty() && existingCustomMenuFileHasEntries(file)) {
+            OrderToCookMod.LOGGER.warn("Refusing to overwrite non-empty custom menu config with an empty item list: {}", file.getAbsolutePath());
+            return;
+        }
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        backupCustomMenuFile(file);
         JsonObject root = new JsonObject();
         JsonArray arr = new JsonArray();
         for (CustomMenuEntry entry : entries) {
@@ -337,9 +395,41 @@ public class ConfigManager {
         try (FileOutputStream out = new FileOutputStream(file)) {
             String result = root.toJson(true, true);
             out.write(result.getBytes());
+            activeCustomMenuFileLastModified = file.lastModified();
         } catch (IOException e) {
             OrderToCookMod.LOGGER.error("Failed to save custom menu items config {}", file.getName(), e);
         }
+    }
+
+    private static boolean existingCustomMenuFileHasEntries(File file) {
+        if (file == null || !file.exists()) {
+            return false;
+        }
+        try {
+            String text = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+            return text.contains("\"item\"") || text.contains("item:");
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private static void backupCustomMenuFile(File file) {
+        if (file == null || !file.exists() || !existingCustomMenuFileHasEntries(file)) {
+            return;
+        }
+        File backup = new File(file.getParentFile(), file.getName() + ".bak");
+        try {
+            Files.copy(file.toPath(), backup.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            OrderToCookMod.LOGGER.warn("Failed to backup custom menu config {}", file.getAbsolutePath(), e);
+        }
+    }
+
+    private static String stripBom(String text) {
+        if (text != null && !text.isEmpty() && text.charAt(0) == '\uFEFF') {
+            return text.substring(1);
+        }
+        return text;
     }
 
     private static CustomMenuEntry parseObjectEntry(JsonObject obj) {
@@ -350,7 +440,7 @@ public class ConfigManager {
                 return null;
             }
             ResourceLocation id = ResourceLocation.tryParse(String.valueOf(ip.getValue()).trim());
-            if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return null;
+            if (id == null) return null;
             int hunger = Integer.parseInt(String.valueOf(hp.getValue()).trim());
             if (hunger <= 0) return null;
             String nbt = null;
@@ -358,7 +448,8 @@ public class ConfigManager {
             if (nbtDataEl instanceof JsonPrimitive sp && sp.getValue() != null) {
                 nbt = String.valueOf(sp.getValue()).trim();
             }
-            return new CustomMenuEntry(BuiltInRegistries.ITEM.get(id), id, hunger, nbt);
+            Item item = BuiltInRegistries.ITEM.containsKey(id) ? BuiltInRegistries.ITEM.get(id) : null;
+            return new CustomMenuEntry(item, id, hunger, nbt);
         } catch (Exception ignored) {
             return null;
         }

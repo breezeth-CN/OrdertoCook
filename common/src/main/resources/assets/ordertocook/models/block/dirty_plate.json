@@ -1,58 +1,208 @@
 {
-	"format_version": "1.21.11",
+	"render_type": "minecraft:cutout",
+	"format_version": "1.9.0",
 	"credit": "Made with Blockbench",
-	"ambientocclusion": false,
+	"texture_size": [
+		160,
+		160
+	],
 	"textures": {
-		"1": "ordertocook:item/food_plate2",
-		"particle": "ordertocook:item/food_plate"
+		"1": "ordertocook:block/food_plate_variants"
 	},
 	"elements": [
 		{
-			"from": [1, 0, 1],
-			"to": [15, 2, 15],
+			"from": [
+				2,
+				0,
+				2
+			],
+			"to": [
+				14,
+				1,
+				14
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					-70,
+					0,
+					8
+				]
+			},
 			"faces": {
-				"north": {"uv": [7, 1.5, 10.5, 2], "texture": "#1"},
-				"east": {"uv": [7, 2, 10.5, 2.5], "texture": "#1"},
-				"south": {"uv": [7, 2.5, 10.5, 3], "texture": "#1"},
-				"west": {"uv": [7, 3, 10.5, 3.5], "texture": "#1"},
-				"up": {"uv": [7, 5.5, 3.5, 2], "texture": "#1"},
-				"down": {"uv": [7, 5.5, 3.5, 9], "texture": "#1"}
+				"north": {
+					"uv": [
+						1.2,
+						0,
+						2.4,
+						0.1
+					],
+					"texture": "#1"
+				},
+				"east": {
+					"uv": [
+						1.2,
+						0.1,
+						2.4,
+						0.2
+					],
+					"texture": "#1"
+				},
+				"south": {
+					"uv": [
+						1.2,
+						0.2,
+						2.4,
+						0.3
+					],
+					"texture": "#1"
+				},
+				"west": {
+					"uv": [
+						1.2,
+						0.3,
+						2.4,
+						0.4
+					],
+					"texture": "#1"
+				},
+				"up": {
+					"uv": [
+						1.2,
+						1.2,
+						0,
+						0
+					],
+					"texture": "#1"
+				},
+				"down": {
+					"uv": [
+						1.2,
+						1.2,
+						0,
+						2.4
+					],
+					"texture": "#1"
+				}
+			}
+		},
+		{
+			"from": [
+				2,
+				1.01563,
+				2
+			],
+			"to": [
+				14,
+				1.01563,
+				14
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					-70,
+					1,
+					8
+				]
+			},
+			"faces": {
+				"up": {
+					"uv": [
+						1.2,
+						3.8,
+						0,
+						2.6
+					],
+					"texture": "#1"
+				}
 			}
 		}
 	],
 	"display": {
 		"thirdperson_righthand": {
 			"rotation": [75, 45, 0],
-			"translation": [0, 2.5, 2.5],
+			"translation": [0, 2.5, 0],
 			"scale": [0.375, 0.375, 0.375]
 		},
 		"thirdperson_lefthand": {
 			"rotation": [75, 45, 0],
-			"translation": [0, 2.5, 2.75],
+			"translation": [0, 2.5, 0],
 			"scale": [0.375, 0.375, 0.375]
 		},
 		"firstperson_righthand": {
 			"rotation": [0, 45, 0],
-			"translation": [0, 4.25, 0],
+			"translation": [0, 2.25, 0],
 			"scale": [0.4, 0.4, 0.4]
 		},
 		"firstperson_lefthand": {
 			"rotation": [0, -135, 0],
-			"translation": [0, 3.25, 0],
+			"translation": [0, 3, 0],
 			"scale": [0.4, 0.4, 0.4]
 		},
 		"ground": {
 			"translation": [0, 3, 0],
-			"scale": [0.25, 0.25, 0.25]
+			"scale": [0.35, 0.35, 0.35]
 		},
 		"gui": {
 			"rotation": [30, -135, 0],
-			"translation": [0, 2.5, 0],
-			"scale": [0.6, 0.6, 0.6]
+			"translation": [0, 2.75, 0],
+			"scale": [0.75, 0.75, 0.75]
 		},
 		"fixed": {
-			"rotation": [95, 0, -180],
-			"translation": [0, 0, -5.75]
+			"scale": [0.5, 0.5, 0.5]
 		}
-	}
+	},
+	"groups": [
+		{
+			"name": "group",
+			"origin": [
+				8,
+				8,
+				8
+			],
+			"scope": 0,
+			"color": 0,
+			"children": [
+				{
+					"name": "油脂盘子",
+					"origin": [
+						8,
+						0,
+						8
+					],
+					"scope": 0,
+					"color": 0,
+					"children": [
+						0,
+						{
+							"name": "group",
+							"origin": [
+								8,
+								8,
+								8
+							],
+							"scope": 0,
+							"color": 0,
+							"children": [
+								1
+							]
+						}
+					]
+				},
+				{
+					"name": "10",
+					"origin": [
+						8,
+						8,
+						8
+					],
+					"scope": 0,
+					"color": 0,
+					"children": []
+				}
+			]
+		}
+	]
 }

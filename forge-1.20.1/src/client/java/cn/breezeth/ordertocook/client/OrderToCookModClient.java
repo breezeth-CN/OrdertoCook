@@ -29,6 +29,8 @@ import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -90,6 +92,7 @@ public final class OrderToCookModClient {
         event.enqueueWork(() -> {
             RideOrientationLock.register();
             RidePerspectiveSwitch.register();
+            ItemBlockRenderTypes.setRenderLayer(ModBlocks.FOOD_PLATE_DISPLAY.get(), RenderType.cutout());
             registerScreens();
             MinecraftForge.EVENT_BUS.addListener(OrderToCookModClient::onClientTickPre);
             MinecraftForge.EVENT_BUS.addListener(OrderToCookModClient::onClientTickPost);

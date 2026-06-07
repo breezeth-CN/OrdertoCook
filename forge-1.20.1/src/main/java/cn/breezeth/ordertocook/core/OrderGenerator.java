@@ -13,7 +13,6 @@ import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import cn.breezeth.ordertocook.core.ModConstants;
@@ -25,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.registries.ForgeRegistries;
 
 public class OrderGenerator {
     public static ItemStack generateWalkInOrder(ServerLevel world, BlockPos pos, int level, long spawnTick, String customerName) {
@@ -52,9 +52,7 @@ public class OrderGenerator {
         generateFoodList(world.random, type, nbt, menuFoods);
         
         // 计算奖励与饥饿值加成
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
         
         String customer = customerName;
         nbt.putString(ModConstants.NBT_ORDER_ID, OtcRuntimeIdState.get(world).allocateOrderId());
@@ -107,9 +105,7 @@ public class OrderGenerator {
         generateFoodList(world.random, type, nbt, menuFoods);
 
         // 奖励计算（类型/加急/外卖与长距离倍率）
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
 
         CustomerProfileLibrary.CustomerProfile profile = CustomerProfileLibrary.createOrderProfile(world);
         String customer = profile.displayName();
@@ -142,9 +138,7 @@ public class OrderGenerator {
         boolean urgent = nbt.getBoolean(ModConstants.NBT_URGENT);
         boolean delivery = nbt.getBoolean(ModConstants.NBT_DELIVERY);
         boolean isLongDistance = nbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE);
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
         return VanillaEraFaresChronCompat.applyRewardMultiplier(totalCoin, level);
     }
 
@@ -252,7 +246,7 @@ public class OrderGenerator {
         HashSet<ResourceLocation> seen = new HashSet<>();
         for (Item i : pool) {
             if (i == null) continue;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(i);
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(i);
             if (id == null) continue;
             if (seen.add(id)) {
                 unique.add(i);
@@ -268,13 +262,27 @@ public class OrderGenerator {
         for (int i = 0; i < kinds; i++) {
             Item food = unique.get(i);
             int count = random.nextInt(maxCount) + 1;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(food);
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(food);
+            if (id == null) continue;
             foodListNbt.putInt(id.toString(), count);
         }
         nbt.put(ModConstants.NBT_FOOD_LIST, foodListNbt);
     }
 
+    private static int calculatePrestige(CompoundTag nbt, int type, boolean urgent, boolean delivery, boolean isLongDistance, int level) {
+        int hunger = computeOrderHunger(nbt);
+        int hungerBonus = (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        if (ConfigManager.get().vanillaEraFaresChronCompat) {
+            return calculateCoin(type, urgent, delivery, isLongDistance, level, hungerBonus);
+        }
+        return calculateCoin(type, urgent, delivery, isLongDistance, level) + hungerBonus;
+    }
+
     private static int calculateCoin(int type, boolean urgent, boolean delivery, boolean isLongDistance, int level) {
+        return calculateCoin(type, urgent, delivery, isLongDistance, level, 0);
+    }
+
+    private static int calculateCoin(int type, boolean urgent, boolean delivery, boolean isLongDistance, int level, int preDeliveryBonus) {
         ModConfig config = ConfigManager.get();
         int baseCoin = 1;
         if (type < config.defaultCoinArray.size()) {
@@ -285,6 +293,7 @@ public class OrderGenerator {
         if (urgent) {
             totalCoin += config.rushBonus;
         }
+        totalCoin += preDeliveryBonus;
 
         if (delivery) {
             double multiplier;
@@ -304,8 +313,9 @@ public class OrderGenerator {
         int sum = 0;
         for (String key : foodList.getAllKeys()) {
             ResourceLocation id = ModConstants.tryParseResourceLocation(key);
-            if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) continue;
-            Item item = BuiltInRegistries.ITEM.get(id);
+            if (id == null || !ForgeRegistries.ITEMS.containsKey(id)) continue;
+            Item item = ForgeRegistries.ITEMS.getValue(id);
+            if (item == null) continue;
             int nutrition = ConfigManager.getCustomMenuNutrition(item);
             if (nutrition <= 0) {
                 FoodProperties fc = item.getFoodProperties();

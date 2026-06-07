@@ -58,6 +58,7 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
     @Override
     protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider registryLookup) {
         super.loadAdditional(nbt, registryLookup);
+        clearTemplates();
         ContainerHelper.loadAllItems(nbt, templates, registryLookup);
         defaultsInitialized = nbt.getBoolean("DefaultsInitialized");
         sortMode = nbt.contains("SortMode") ? nbt.getInt("SortMode") : 0;
@@ -66,6 +67,12 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
             defaultsInitialized = true;
         }
         compactAndSort();
+    }
+
+    private void clearTemplates() {
+        for (int i = 0; i < templates.size(); i++) {
+            templates.set(i, ItemStack.EMPTY);
+        }
     }
 
     public CompoundTag toCompactItemNbt() {

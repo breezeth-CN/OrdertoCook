@@ -86,6 +86,29 @@ dependencies {
     }
 }
 
+def appendJanksonToLegacyClasspath = { String fileName ->
+    def legacyFile = layout.buildDirectory.file("moddev/${fileName}").get().asFile
+    def janksonJar = configurations.clientRuntimeClasspath.files.find { it.name.startsWith("jankson-") && it.name.endsWith(".jar") }
+    if (janksonJar != null && legacyFile.exists()) {
+        def lines = legacyFile.readLines("UTF-8")
+        if (!lines.contains(janksonJar.absolutePath)) {
+            legacyFile.append(System.lineSeparator() + janksonJar.absolutePath, "UTF-8")
+        }
+    }
+}
+
+tasks.named("writeClientLegacyClasspath").configure {
+    doLast {
+        appendJanksonToLegacyClasspath("clientLegacyClasspath.txt")
+    }
+}
+
+tasks.named("writeServerLegacyClasspath").configure {
+    doLast {
+        appendJanksonToLegacyClasspath("serverLegacyClasspath.txt")
+    }
+}
+
 processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     exclude "data/ordertocook/advancements/**"

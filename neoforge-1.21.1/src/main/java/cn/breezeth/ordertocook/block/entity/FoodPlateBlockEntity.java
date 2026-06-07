@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class FoodPlateBlockEntity extends BlockEntity {
+    private static final int VARIANT_COUNT = 10;
     private static final int STAGE_ONE_TICK = 15;
     private static final int STAGE_TWO_TICK = 60;
     private static final int STAGE_THREE_TICK = 80;
@@ -20,6 +21,7 @@ public class FoodPlateBlockEntity extends BlockEntity {
 
     private ItemStack plateStack = ItemStack.EMPTY;
     private int eatingTicks = -1;
+    private int plateVariant = 1;
 
     public FoodPlateBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.FOOD_PLATE_DISPLAY.get(), pos, state);
@@ -37,6 +39,7 @@ public class FoodPlateBlockEntity extends BlockEntity {
     public void startEatingSequence(ItemStack stack) {
         this.plateStack = stack.copyWithCount(1);
         this.eatingTicks = 0;
+        this.plateVariant = randomVariant();
         updateStage(0);
         setChanged();
     }
@@ -50,17 +53,30 @@ public class FoodPlateBlockEntity extends BlockEntity {
         }
         blockEntity.eatingTicks++;
         if (blockEntity.eatingTicks == STAGE_ONE_TICK) {
-            blockEntity.updateStage(serverWorld, pos, 1);
+            blockEntity.updateStage(serverWorld, pos, blockEntity.stageForPhase(1));
         } else if (blockEntity.eatingTicks == STAGE_TWO_TICK) {
-            blockEntity.updateStage(serverWorld, pos, 2);
+            blockEntity.updateStage(serverWorld, pos, blockEntity.stageForPhase(2));
         } else if (blockEntity.eatingTicks == STAGE_THREE_TICK) {
-            blockEntity.updateStage(serverWorld, pos, 3);
+            blockEntity.updateStage(serverWorld, pos, blockEntity.stageForPhase(3));
         } else if (blockEntity.eatingTicks >= DIRTY_PLATE_TICK) {
             blockEntity.plateStack = new ItemStack(ModItems.DIRTY_PLATE.get());
-            blockEntity.updateStage(serverWorld, pos, 4);
+            blockEntity.updateStage(serverWorld, pos, blockEntity.stageForPhase(4));
             blockEntity.eatingTicks = -1;
             blockEntity.setChanged();
         }
+    }
+
+    private int randomVariant() {
+        if (this.level != null) {
+            return this.level.random.nextInt(VARIANT_COUNT) + 1;
+        }
+        return java.util.concurrent.ThreadLocalRandom.current().nextInt(1, VARIANT_COUNT + 1);
+    }
+
+    private int stageForPhase(int phase) {
+        int variant = Math.max(1, Math.min(VARIANT_COUNT, this.plateVariant));
+        int clampedPhase = Math.max(1, Math.min(4, phase));
+        return (variant - 1) * 4 + clampedPhase;
     }
 
     private void updateStage(int stage) {
@@ -84,6 +100,7 @@ public class FoodPlateBlockEntity extends BlockEntity {
             nbt.put("PlateStack", plateStack.save(registryLookup));
         }
         nbt.putInt("EatingTicks", this.eatingTicks);
+        nbt.putInt("PlateVariant", this.plateVariant);
     }
 
     @Override
@@ -95,5 +112,6 @@ public class FoodPlateBlockEntity extends BlockEntity {
             this.plateStack = ItemStack.EMPTY;
         }
         this.eatingTicks = nbt.contains("EatingTicks") ? nbt.getInt("EatingTicks") : -1;
+        this.plateVariant = nbt.contains("PlateVariant") ? Math.max(1, Math.min(VARIANT_COUNT, nbt.getInt("PlateVariant"))) : 1;
     }
 }

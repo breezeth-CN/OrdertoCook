@@ -51,9 +51,7 @@ public class OrderGenerator {
         generateFoodList(world.random, type, nbt, menuFoods);
         
         // 计算奖励与饥饿值加成
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
         
         String customer = customerName;
         nbt.putString(ModConstants.NBT_ORDER_ID, OtcRuntimeIdState.get(world).allocateOrderId());
@@ -106,9 +104,7 @@ public class OrderGenerator {
         generateFoodList(world.random, type, nbt, menuFoods);
 
         // 奖励计算（类型/加急/外卖与长距离倍率）
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
 
         CustomerProfileLibrary.CustomerProfile profile = CustomerProfileLibrary.createOrderProfile(world);
         String customer = profile.displayName();
@@ -141,9 +137,7 @@ public class OrderGenerator {
         boolean urgent = nbt.getBoolean(ModConstants.NBT_URGENT);
         boolean delivery = nbt.getBoolean(ModConstants.NBT_DELIVERY);
         boolean isLongDistance = nbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE);
-        int totalCoin = calculateCoin(type, urgent, delivery, isLongDistance, level);
-        int hunger = computeOrderHunger(nbt);
-        totalCoin += (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        int totalCoin = calculatePrestige(nbt, type, urgent, delivery, isLongDistance, level);
         return VanillaEraFaresChronCompat.applyRewardMultiplier(totalCoin, level);
     }
 
@@ -273,7 +267,20 @@ public class OrderGenerator {
         nbt.put(ModConstants.NBT_FOOD_LIST, foodListNbt);
     }
 
+    private static int calculatePrestige(NbtCompound nbt, int type, boolean urgent, boolean delivery, boolean isLongDistance, int level) {
+        int hunger = computeOrderHunger(nbt);
+        int hungerBonus = (int) Math.ceil(hunger * baseHungerBonusRate(level));
+        if (ConfigManager.get().vanillaEraFaresChronCompat) {
+            return calculateCoin(type, urgent, delivery, isLongDistance, level, hungerBonus);
+        }
+        return calculateCoin(type, urgent, delivery, isLongDistance, level) + hungerBonus;
+    }
+
     private static int calculateCoin(int type, boolean urgent, boolean delivery, boolean isLongDistance, int level) {
+        return calculateCoin(type, urgent, delivery, isLongDistance, level, 0);
+    }
+
+    private static int calculateCoin(int type, boolean urgent, boolean delivery, boolean isLongDistance, int level, int preDeliveryBonus) {
         ModConfig config = ConfigManager.get();
         int baseCoin = 1;
         if (type < config.defaultCoinArray.size()) {
@@ -284,6 +291,7 @@ public class OrderGenerator {
         if (urgent) {
             totalCoin += config.rushBonus;
         }
+        totalCoin += preDeliveryBonus;
 
         if (delivery) {
             double multiplier;

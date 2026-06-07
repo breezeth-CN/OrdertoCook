@@ -9,7 +9,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongTag;
@@ -29,6 +28,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
 
 
 public class BoardBlockEntity extends BlockEntity implements MenuProvider, ImplementedInventory {
@@ -58,6 +58,7 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
+        clearTemplates();
         ContainerHelper.loadAllItems(nbt, templates);
         defaultsInitialized = nbt.getBoolean("DefaultsInitialized");
         sortMode = nbt.contains("SortMode") ? nbt.getInt("SortMode") : 0;
@@ -66,6 +67,12 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
             defaultsInitialized = true;
         }
         compactAndSort();
+    }
+
+    private void clearTemplates() {
+        for (int i = 0; i < templates.size(); i++) {
+            templates.set(i, ItemStack.EMPTY);
+        }
     }
 
     public CompoundTag toCompactItemNbt() {
@@ -77,7 +84,9 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
         HashSet<String> seen = new HashSet<>();
         for (ItemStack s : templates) {
             if (s.isEmpty()) continue;
-            String id = BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
+            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(s.getItem());
+            if (itemId == null) continue;
+            String id = itemId.toString();
             if (seen.add(id)) {
                 list.add(StringTag.valueOf(id));
                 times.add(LongTag.valueOf(lastSetTimeOf(s)));
@@ -104,9 +113,10 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
             for (int i = 0; i < list.size() && write < templates.size(); i++) {
                 ResourceLocation id = ModConstants.tryParseResourceLocation(list.getString(i));
                 if (id == null) continue;
-                if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
+                if (!ForgeRegistries.ITEMS.containsKey(id)) continue;
                 if (!seen.add(id)) continue;
-                Item item = BuiltInRegistries.ITEM.get(id);
+                Item item = ForgeRegistries.ITEMS.getValue(id);
+                if (item == null) continue;
                 ItemStack stack = new ItemStack(item);
                 stack.setCount(1);
                 long ts = 0L;
@@ -148,9 +158,10 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
         if (source.isEmpty()) return false;
         if (nutritionOf(source) <= 0) return false;
         Item item = source.getItem();
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        if (id == null) return false;
         for (ItemStack s : templates) {
-            if (!s.isEmpty() && BuiltInRegistries.ITEM.getKey(s.getItem()).equals(id)) {
+            if (!s.isEmpty() && id.equals(ForgeRegistries.ITEMS.getKey(s.getItem()))) {
                 return false;
             }
         }
@@ -204,7 +215,8 @@ public class BoardBlockEntity extends BlockEntity implements MenuProvider, Imple
     }
 
     private String idOf(ItemStack s) {
-        return BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
+        ResourceLocation id = ForgeRegistries.ITEMS.getKey(s.getItem());
+        return id == null ? "" : id.toString();
     }
 
     private long lastSetTimeOf(ItemStack s) {

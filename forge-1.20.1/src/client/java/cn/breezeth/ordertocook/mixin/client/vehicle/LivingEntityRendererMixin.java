@@ -24,6 +24,7 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
                     target = "Lnet/minecraft/client/model/EntityModel;m_7695_(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V",
                     remap = false
             ),
+            require = 0,
             remap = false
     )
     private void ordertocook$replacePlayerBodyWithGeo(

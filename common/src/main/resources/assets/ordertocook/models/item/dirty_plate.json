@@ -1,4 +1,3 @@
 ﻿{
-  "parent": "ordertocook:block/dirty_plate"
+  "parent": "ordertocook:block/dirty_plate_item"
 }
-

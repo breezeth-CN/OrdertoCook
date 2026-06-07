@@ -1,24 +1,619 @@
 {
   "variants": {
-    "facing=north,stage=0": { "model": "ordertocook:block/food_plate" },
-    "facing=east,stage=0": { "model": "ordertocook:block/food_plate", "y": 90 },
-    "facing=south,stage=0": { "model": "ordertocook:block/food_plate", "y": 180 },
-    "facing=west,stage=0": { "model": "ordertocook:block/food_plate", "y": 270 },
-    "facing=north,stage=1": { "model": "ordertocook:block/food_plate1" },
-    "facing=east,stage=1": { "model": "ordertocook:block/food_plate1", "y": 90 },
-    "facing=south,stage=1": { "model": "ordertocook:block/food_plate1", "y": 180 },
-    "facing=west,stage=1": { "model": "ordertocook:block/food_plate1", "y": 270 },
-    "facing=north,stage=2": { "model": "ordertocook:block/food_plate2" },
-    "facing=east,stage=2": { "model": "ordertocook:block/food_plate2", "y": 90 },
-    "facing=south,stage=2": { "model": "ordertocook:block/food_plate2", "y": 180 },
-    "facing=west,stage=2": { "model": "ordertocook:block/food_plate2", "y": 270 },
-    "facing=north,stage=3": { "model": "ordertocook:block/food_plate3" },
-    "facing=east,stage=3": { "model": "ordertocook:block/food_plate3", "y": 90 },
-    "facing=south,stage=3": { "model": "ordertocook:block/food_plate3", "y": 180 },
-    "facing=west,stage=3": { "model": "ordertocook:block/food_plate3", "y": 270 },
-    "facing=north,stage=4": { "model": "ordertocook:block/dirty_plate" },
-    "facing=east,stage=4": { "model": "ordertocook:block/dirty_plate", "y": 90 },
-    "facing=south,stage=4": { "model": "ordertocook:block/dirty_plate", "y": 180 },
-    "facing=west,stage=4": { "model": "ordertocook:block/dirty_plate", "y": 270 }
+    "facing=north,stage=0": {
+      "model": "ordertocook:block/food_plate"
+    },
+    "facing=east,stage=0": {
+      "model": "ordertocook:block/food_plate",
+      "y": 90
+    },
+    "facing=south,stage=0": {
+      "model": "ordertocook:block/food_plate",
+      "y": 180
+    },
+    "facing=west,stage=0": {
+      "model": "ordertocook:block/food_plate",
+      "y": 270
+    },
+    "facing=north,stage=1": {
+      "model": "ordertocook:block/food_plate_anim/1_1"
+    },
+    "facing=east,stage=1": {
+      "model": "ordertocook:block/food_plate_anim/1_1",
+      "y": 90
+    },
+    "facing=south,stage=1": {
+      "model": "ordertocook:block/food_plate_anim/1_1",
+      "y": 180
+    },
+    "facing=west,stage=1": {
+      "model": "ordertocook:block/food_plate_anim/1_1",
+      "y": 270
+    },
+    "facing=north,stage=2": {
+      "model": "ordertocook:block/food_plate_anim/1_2"
+    },
+    "facing=east,stage=2": {
+      "model": "ordertocook:block/food_plate_anim/1_2",
+      "y": 90
+    },
+    "facing=south,stage=2": {
+      "model": "ordertocook:block/food_plate_anim/1_2",
+      "y": 180
+    },
+    "facing=west,stage=2": {
+      "model": "ordertocook:block/food_plate_anim/1_2",
+      "y": 270
+    },
+    "facing=north,stage=3": {
+      "model": "ordertocook:block/food_plate_anim/1_3"
+    },
+    "facing=east,stage=3": {
+      "model": "ordertocook:block/food_plate_anim/1_3",
+      "y": 90
+    },
+    "facing=south,stage=3": {
+      "model": "ordertocook:block/food_plate_anim/1_3",
+      "y": 180
+    },
+    "facing=west,stage=3": {
+      "model": "ordertocook:block/food_plate_anim/1_3",
+      "y": 270
+    },
+    "facing=north,stage=4": {
+      "model": "ordertocook:block/food_plate_anim/1_4"
+    },
+    "facing=east,stage=4": {
+      "model": "ordertocook:block/food_plate_anim/1_4",
+      "y": 90
+    },
+    "facing=south,stage=4": {
+      "model": "ordertocook:block/food_plate_anim/1_4",
+      "y": 180
+    },
+    "facing=west,stage=4": {
+      "model": "ordertocook:block/food_plate_anim/1_4",
+      "y": 270
+    },
+    "facing=north,stage=5": {
+      "model": "ordertocook:block/food_plate_anim/2_1"
+    },
+    "facing=east,stage=5": {
+      "model": "ordertocook:block/food_plate_anim/2_1",
+      "y": 90
+    },
+    "facing=south,stage=5": {
+      "model": "ordertocook:block/food_plate_anim/2_1",
+      "y": 180
+    },
+    "facing=west,stage=5": {
+      "model": "ordertocook:block/food_plate_anim/2_1",
+      "y": 270
+    },
+    "facing=north,stage=6": {
+      "model": "ordertocook:block/food_plate_anim/2_2"
+    },
+    "facing=east,stage=6": {
+      "model": "ordertocook:block/food_plate_anim/2_2",
+      "y": 90
+    },
+    "facing=south,stage=6": {
+      "model": "ordertocook:block/food_plate_anim/2_2",
+      "y": 180
+    },
+    "facing=west,stage=6": {
+      "model": "ordertocook:block/food_plate_anim/2_2",
+      "y": 270
+    },
+    "facing=north,stage=7": {
+      "model": "ordertocook:block/food_plate_anim/2_3"
+    },
+    "facing=east,stage=7": {
+      "model": "ordertocook:block/food_plate_anim/2_3",
+      "y": 90
+    },
+    "facing=south,stage=7": {
+      "model": "ordertocook:block/food_plate_anim/2_3",
+      "y": 180
+    },
+    "facing=west,stage=7": {
+      "model": "ordertocook:block/food_plate_anim/2_3",
+      "y": 270
+    },
+    "facing=north,stage=8": {
+      "model": "ordertocook:block/food_plate_anim/2_4"
+    },
+    "facing=east,stage=8": {
+      "model": "ordertocook:block/food_plate_anim/2_4",
+      "y": 90
+    },
+    "facing=south,stage=8": {
+      "model": "ordertocook:block/food_plate_anim/2_4",
+      "y": 180
+    },
+    "facing=west,stage=8": {
+      "model": "ordertocook:block/food_plate_anim/2_4",
+      "y": 270
+    },
+    "facing=north,stage=9": {
+      "model": "ordertocook:block/food_plate_anim/3_1"
+    },
+    "facing=east,stage=9": {
+      "model": "ordertocook:block/food_plate_anim/3_1",
+      "y": 90
+    },
+    "facing=south,stage=9": {
+      "model": "ordertocook:block/food_plate_anim/3_1",
+      "y": 180
+    },
+    "facing=west,stage=9": {
+      "model": "ordertocook:block/food_plate_anim/3_1",
+      "y": 270
+    },
+    "facing=north,stage=10": {
+      "model": "ordertocook:block/food_plate_anim/3_2"
+    },
+    "facing=east,stage=10": {
+      "model": "ordertocook:block/food_plate_anim/3_2",
+      "y": 90
+    },
+    "facing=south,stage=10": {
+      "model": "ordertocook:block/food_plate_anim/3_2",
+      "y": 180
+    },
+    "facing=west,stage=10": {
+      "model": "ordertocook:block/food_plate_anim/3_2",
+      "y": 270
+    },
+    "facing=north,stage=11": {
+      "model": "ordertocook:block/food_plate_anim/3_3"
+    },
+    "facing=east,stage=11": {
+      "model": "ordertocook:block/food_plate_anim/3_3",
+      "y": 90
+    },
+    "facing=south,stage=11": {
+      "model": "ordertocook:block/food_plate_anim/3_3",
+      "y": 180
+    },
+    "facing=west,stage=11": {
+      "model": "ordertocook:block/food_plate_anim/3_3",
+      "y": 270
+    },
+    "facing=north,stage=12": {
+      "model": "ordertocook:block/food_plate_anim/3_4"
+    },
+    "facing=east,stage=12": {
+      "model": "ordertocook:block/food_plate_anim/3_4",
+      "y": 90
+    },
+    "facing=south,stage=12": {
+      "model": "ordertocook:block/food_plate_anim/3_4",
+      "y": 180
+    },
+    "facing=west,stage=12": {
+      "model": "ordertocook:block/food_plate_anim/3_4",
+      "y": 270
+    },
+    "facing=north,stage=13": {
+      "model": "ordertocook:block/food_plate_anim/4_1"
+    },
+    "facing=east,stage=13": {
+      "model": "ordertocook:block/food_plate_anim/4_1",
+      "y": 90
+    },
+    "facing=south,stage=13": {
+      "model": "ordertocook:block/food_plate_anim/4_1",
+      "y": 180
+    },
+    "facing=west,stage=13": {
+      "model": "ordertocook:block/food_plate_anim/4_1",
+      "y": 270
+    },
+    "facing=north,stage=14": {
+      "model": "ordertocook:block/food_plate_anim/4_2"
+    },
+    "facing=east,stage=14": {
+      "model": "ordertocook:block/food_plate_anim/4_2",
+      "y": 90
+    },
+    "facing=south,stage=14": {
+      "model": "ordertocook:block/food_plate_anim/4_2",
+      "y": 180
+    },
+    "facing=west,stage=14": {
+      "model": "ordertocook:block/food_plate_anim/4_2",
+      "y": 270
+    },
+    "facing=north,stage=15": {
+      "model": "ordertocook:block/food_plate_anim/4_3"
+    },
+    "facing=east,stage=15": {
+      "model": "ordertocook:block/food_plate_anim/4_3",
+      "y": 90
+    },
+    "facing=south,stage=15": {
+      "model": "ordertocook:block/food_plate_anim/4_3",
+      "y": 180
+    },
+    "facing=west,stage=15": {
+      "model": "ordertocook:block/food_plate_anim/4_3",
+      "y": 270
+    },
+    "facing=north,stage=16": {
+      "model": "ordertocook:block/food_plate_anim/4_4"
+    },
+    "facing=east,stage=16": {
+      "model": "ordertocook:block/food_plate_anim/4_4",
+      "y": 90
+    },
+    "facing=south,stage=16": {
+      "model": "ordertocook:block/food_plate_anim/4_4",
+      "y": 180
+    },
+    "facing=west,stage=16": {
+      "model": "ordertocook:block/food_plate_anim/4_4",
+      "y": 270
+    },
+    "facing=north,stage=17": {
+      "model": "ordertocook:block/food_plate_anim/5_1"
+    },
+    "facing=east,stage=17": {
+      "model": "ordertocook:block/food_plate_anim/5_1",
+      "y": 90
+    },
+    "facing=south,stage=17": {
+      "model": "ordertocook:block/food_plate_anim/5_1",
+      "y": 180
+    },
+    "facing=west,stage=17": {
+      "model": "ordertocook:block/food_plate_anim/5_1",
+      "y": 270
+    },
+    "facing=north,stage=18": {
+      "model": "ordertocook:block/food_plate_anim/5_2"
+    },
+    "facing=east,stage=18": {
+      "model": "ordertocook:block/food_plate_anim/5_2",
+      "y": 90
+    },
+    "facing=south,stage=18": {
+      "model": "ordertocook:block/food_plate_anim/5_2",
+      "y": 180
+    },
+    "facing=west,stage=18": {
+      "model": "ordertocook:block/food_plate_anim/5_2",
+      "y": 270
+    },
+    "facing=north,stage=19": {
+      "model": "ordertocook:block/food_plate_anim/5_3"
+    },
+    "facing=east,stage=19": {
+      "model": "ordertocook:block/food_plate_anim/5_3",
+      "y": 90
+    },
+    "facing=south,stage=19": {
+      "model": "ordertocook:block/food_plate_anim/5_3",
+      "y": 180
+    },
+    "facing=west,stage=19": {
+      "model": "ordertocook:block/food_plate_anim/5_3",
+      "y": 270
+    },
+    "facing=north,stage=20": {
+      "model": "ordertocook:block/food_plate_anim/5_4"
+    },
+    "facing=east,stage=20": {
+      "model": "ordertocook:block/food_plate_anim/5_4",
+      "y": 90
+    },
+    "facing=south,stage=20": {
+      "model": "ordertocook:block/food_plate_anim/5_4",
+      "y": 180
+    },
+    "facing=west,stage=20": {
+      "model": "ordertocook:block/food_plate_anim/5_4",
+      "y": 270
+    },
+    "facing=north,stage=21": {
+      "model": "ordertocook:block/food_plate_anim/6_1"
+    },
+    "facing=east,stage=21": {
+      "model": "ordertocook:block/food_plate_anim/6_1",
+      "y": 90
+    },
+    "facing=south,stage=21": {
+      "model": "ordertocook:block/food_plate_anim/6_1",
+      "y": 180
+    },
+    "facing=west,stage=21": {
+      "model": "ordertocook:block/food_plate_anim/6_1",
+      "y": 270
+    },
+    "facing=north,stage=22": {
+      "model": "ordertocook:block/food_plate_anim/6_2"
+    },
+    "facing=east,stage=22": {
+      "model": "ordertocook:block/food_plate_anim/6_2",
+      "y": 90
+    },
+    "facing=south,stage=22": {
+      "model": "ordertocook:block/food_plate_anim/6_2",
+      "y": 180
+    },
+    "facing=west,stage=22": {
+      "model": "ordertocook:block/food_plate_anim/6_2",
+      "y": 270
+    },
+    "facing=north,stage=23": {
+      "model": "ordertocook:block/food_plate_anim/6_3"
+    },
+    "facing=east,stage=23": {
+      "model": "ordertocook:block/food_plate_anim/6_3",
+      "y": 90
+    },
+    "facing=south,stage=23": {
+      "model": "ordertocook:block/food_plate_anim/6_3",
+      "y": 180
+    },
+    "facing=west,stage=23": {
+      "model": "ordertocook:block/food_plate_anim/6_3",
+      "y": 270
+    },
+    "facing=north,stage=24": {
+      "model": "ordertocook:block/food_plate_anim/6_4"
+    },
+    "facing=east,stage=24": {
+      "model": "ordertocook:block/food_plate_anim/6_4",
+      "y": 90
+    },
+    "facing=south,stage=24": {
+      "model": "ordertocook:block/food_plate_anim/6_4",
+      "y": 180
+    },
+    "facing=west,stage=24": {
+      "model": "ordertocook:block/food_plate_anim/6_4",
+      "y": 270
+    },
+    "facing=north,stage=25": {
+      "model": "ordertocook:block/food_plate_anim/7_1"
+    },
+    "facing=east,stage=25": {
+      "model": "ordertocook:block/food_plate_anim/7_1",
+      "y": 90
+    },
+    "facing=south,stage=25": {
+      "model": "ordertocook:block/food_plate_anim/7_1",
+      "y": 180
+    },
+    "facing=west,stage=25": {
+      "model": "ordertocook:block/food_plate_anim/7_1",
+      "y": 270
+    },
+    "facing=north,stage=26": {
+      "model": "ordertocook:block/food_plate_anim/7_2"
+    },
+    "facing=east,stage=26": {
+      "model": "ordertocook:block/food_plate_anim/7_2",
+      "y": 90
+    },
+    "facing=south,stage=26": {
+      "model": "ordertocook:block/food_plate_anim/7_2",
+      "y": 180
+    },
+    "facing=west,stage=26": {
+      "model": "ordertocook:block/food_plate_anim/7_2",
+      "y": 270
+    },
+    "facing=north,stage=27": {
+      "model": "ordertocook:block/food_plate_anim/7_3"
+    },
+    "facing=east,stage=27": {
+      "model": "ordertocook:block/food_plate_anim/7_3",
+      "y": 90
+    },
+    "facing=south,stage=27": {
+      "model": "ordertocook:block/food_plate_anim/7_3",
+      "y": 180
+    },
+    "facing=west,stage=27": {
+      "model": "ordertocook:block/food_plate_anim/7_3",
+      "y": 270
+    },
+    "facing=north,stage=28": {
+      "model": "ordertocook:block/food_plate_anim/7_4"
+    },
+    "facing=east,stage=28": {
+      "model": "ordertocook:block/food_plate_anim/7_4",
+      "y": 90
+    },
+    "facing=south,stage=28": {
+      "model": "ordertocook:block/food_plate_anim/7_4",
+      "y": 180
+    },
+    "facing=west,stage=28": {
+      "model": "ordertocook:block/food_plate_anim/7_4",
+      "y": 270
+    },
+    "facing=north,stage=29": {
+      "model": "ordertocook:block/food_plate_anim/8_1"
+    },
+    "facing=east,stage=29": {
+      "model": "ordertocook:block/food_plate_anim/8_1",
+      "y": 90
+    },
+    "facing=south,stage=29": {
+      "model": "ordertocook:block/food_plate_anim/8_1",
+      "y": 180
+    },
+    "facing=west,stage=29": {
+      "model": "ordertocook:block/food_plate_anim/8_1",
+      "y": 270
+    },
+    "facing=north,stage=30": {
+      "model": "ordertocook:block/food_plate_anim/8_2"
+    },
+    "facing=east,stage=30": {
+      "model": "ordertocook:block/food_plate_anim/8_2",
+      "y": 90
+    },
+    "facing=south,stage=30": {
+      "model": "ordertocook:block/food_plate_anim/8_2",
+      "y": 180
+    },
+    "facing=west,stage=30": {
+      "model": "ordertocook:block/food_plate_anim/8_2",
+      "y": 270
+    },
+    "facing=north,stage=31": {
+      "model": "ordertocook:block/food_plate_anim/8_3"
+    },
+    "facing=east,stage=31": {
+      "model": "ordertocook:block/food_plate_anim/8_3",
+      "y": 90
+    },
+    "facing=south,stage=31": {
+      "model": "ordertocook:block/food_plate_anim/8_3",
+      "y": 180
+    },
+    "facing=west,stage=31": {
+      "model": "ordertocook:block/food_plate_anim/8_3",
+      "y": 270
+    },
+    "facing=north,stage=32": {
+      "model": "ordertocook:block/food_plate_anim/8_4"
+    },
+    "facing=east,stage=32": {
+      "model": "ordertocook:block/food_plate_anim/8_4",
+      "y": 90
+    },
+    "facing=south,stage=32": {
+      "model": "ordertocook:block/food_plate_anim/8_4",
+      "y": 180
+    },
+    "facing=west,stage=32": {
+      "model": "ordertocook:block/food_plate_anim/8_4",
+      "y": 270
+    },
+    "facing=north,stage=33": {
+      "model": "ordertocook:block/food_plate_anim/9_1"
+    },
+    "facing=east,stage=33": {
+      "model": "ordertocook:block/food_plate_anim/9_1",
+      "y": 90
+    },
+    "facing=south,stage=33": {
+      "model": "ordertocook:block/food_plate_anim/9_1",
+      "y": 180
+    },
+    "facing=west,stage=33": {
+      "model": "ordertocook:block/food_plate_anim/9_1",
+      "y": 270
+    },
+    "facing=north,stage=34": {
+      "model": "ordertocook:block/food_plate_anim/9_2"
+    },
+    "facing=east,stage=34": {
+      "model": "ordertocook:block/food_plate_anim/9_2",
+      "y": 90
+    },
+    "facing=south,stage=34": {
+      "model": "ordertocook:block/food_plate_anim/9_2",
+      "y": 180
+    },
+    "facing=west,stage=34": {
+      "model": "ordertocook:block/food_plate_anim/9_2",
+      "y": 270
+    },
+    "facing=north,stage=35": {
+      "model": "ordertocook:block/food_plate_anim/9_3"
+    },
+    "facing=east,stage=35": {
+      "model": "ordertocook:block/food_plate_anim/9_3",
+      "y": 90
+    },
+    "facing=south,stage=35": {
+      "model": "ordertocook:block/food_plate_anim/9_3",
+      "y": 180
+    },
+    "facing=west,stage=35": {
+      "model": "ordertocook:block/food_plate_anim/9_3",
+      "y": 270
+    },
+    "facing=north,stage=36": {
+      "model": "ordertocook:block/food_plate_anim/9_4"
+    },
+    "facing=east,stage=36": {
+      "model": "ordertocook:block/food_plate_anim/9_4",
+      "y": 90
+    },
+    "facing=south,stage=36": {
+      "model": "ordertocook:block/food_plate_anim/9_4",
+      "y": 180
+    },
+    "facing=west,stage=36": {
+      "model": "ordertocook:block/food_plate_anim/9_4",
+      "y": 270
+    },
+    "facing=north,stage=37": {
+      "model": "ordertocook:block/food_plate_anim/10_1"
+    },
+    "facing=east,stage=37": {
+      "model": "ordertocook:block/food_plate_anim/10_1",
+      "y": 90
+    },
+    "facing=south,stage=37": {
+      "model": "ordertocook:block/food_plate_anim/10_1",
+      "y": 180
+    },
+    "facing=west,stage=37": {
+      "model": "ordertocook:block/food_plate_anim/10_1",
+      "y": 270
+    },
+    "facing=north,stage=38": {
+      "model": "ordertocook:block/food_plate_anim/10_2"
+    },
+    "facing=east,stage=38": {
+      "model": "ordertocook:block/food_plate_anim/10_2",
+      "y": 90
+    },
+    "facing=south,stage=38": {
+      "model": "ordertocook:block/food_plate_anim/10_2",
+      "y": 180
+    },
+    "facing=west,stage=38": {
+      "model": "ordertocook:block/food_plate_anim/10_2",
+      "y": 270
+    },
+    "facing=north,stage=39": {
+      "model": "ordertocook:block/food_plate_anim/10_3"
+    },
+    "facing=east,stage=39": {
+      "model": "ordertocook:block/food_plate_anim/10_3",
+      "y": 90
+    },
+    "facing=south,stage=39": {
+      "model": "ordertocook:block/food_plate_anim/10_3",
+      "y": 180
+    },
+    "facing=west,stage=39": {
+      "model": "ordertocook:block/food_plate_anim/10_3",
+      "y": 270
+    },
+    "facing=north,stage=40": {
+      "model": "ordertocook:block/food_plate_anim/10_4"
+    },
+    "facing=east,stage=40": {
+      "model": "ordertocook:block/food_plate_anim/10_4",
+      "y": 90
+    },
+    "facing=south,stage=40": {
+      "model": "ordertocook:block/food_plate_anim/10_4",
+      "y": 180
+    },
+    "facing=west,stage=40": {
+      "model": "ordertocook:block/food_plate_anim/10_4",
+      "y": 270
+    }
   }
 }
