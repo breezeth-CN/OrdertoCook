@@ -231,6 +231,7 @@
   "container.ordertocook.motorcycle_cooler": "保温箱",
   "container.ordertocook.refrigerator_upper": "冰箱上层",
   "container.ordertocook.refrigerator_lower": "冰箱下层",
+  "screen.ordertocook.refrigerator.sort_tooltip": "一键整理",
   "jade.ordertocook.packaging_shelf.leather": "皮革：%1$s/%2$s",
   "jade.ordertocook.plate_shelf.clean_plates": "干净餐盘：%1$s/%2$s",
   "jade.ordertocook.washing_table.dirty_plates": "脏餐盘：%1$s/%2$s",

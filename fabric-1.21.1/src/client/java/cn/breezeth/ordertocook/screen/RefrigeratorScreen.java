@@ -75,6 +75,9 @@ public class RefrigeratorScreen extends HandledScreen<RefrigeratorScreenHandler>
         renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
         renderSortIcon(context);
+        if (sortButton != null && sortButton.visible && sortButton.isHovered()) {
+            context.drawTooltip(textRenderer, java.util.List.of(Text.translatable("screen.ordertocook.refrigerator.sort_tooltip")), mouseX, mouseY);
+        }
         context.draw();
         context.getMatrices().push();
         context.getMatrices().translate(0.0F, 0.0F, 300.0F);

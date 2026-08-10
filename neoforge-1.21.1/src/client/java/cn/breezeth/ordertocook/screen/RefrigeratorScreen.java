@@ -63,6 +63,9 @@ public class RefrigeratorScreen extends AbstractContainerScreen<RefrigeratorScre
         renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
         renderSortIcon(context);
+        if (sortButton != null && sortButton.visible && sortButton.isHovered()) {
+            context.renderTooltip(font, Component.translatable("screen.ordertocook.refrigerator.sort_tooltip"), mouseX, mouseY);
+        }
         context.flush();
         renderLargeStackCounts(context);
         renderTooltip(context, mouseX, mouseY);
