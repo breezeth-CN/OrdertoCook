@@ -45,6 +45,8 @@ public final class ModClientNetworking {
                 LAST_OPEN_SCREEN_OWNER = payload.owner();
             });
         });
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CustomMenuSyncS2CPayload.ID, (payload, context) ->
+                context.client().execute(() -> cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(payload.json())));
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.RiderAnimS2CPayload.ID, (payload, context) ->
                 context.client().execute(() -> applyRemoteRiderAnimation(context.client(), payload.playerUuid(), payload.animType(), payload.animate())));
     }

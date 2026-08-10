@@ -12,8 +12,10 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
@@ -26,7 +28,9 @@ import cn.breezeth.ordertocook.registry.ModBlocks;
 import cn.breezeth.ordertocook.util.DataCompat;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.registry.Registries;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import cn.breezeth.ordertocook.core.ModConstants;
 import cn.breezeth.ordertocook.block.FoodPlateBlock;
@@ -37,6 +41,7 @@ import cn.breezeth.ordertocook.config.ConfigManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.state.property.Properties;
 import cn.breezeth.ordertocook.registry.ModSounds;
@@ -50,7 +55,21 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
 
     public TakeoutBoxBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.COUNTERTOP, pos, state);
-        this.propertyDelegate = new ArrayPropertyDelegate(2);
+        this.propertyDelegate = new ArrayPropertyDelegate(22);
+    }
+
+    public cn.breezeth.ordertocook.api.CountertopAutomationApi.Status getAutomationStatus(
+            cn.breezeth.ordertocook.api.CountertopAutomationApi.Action action) {
+        ItemStack orderStack = inventory.get(0);
+        if (orderStack.isEmpty() || !orderStack.isOf(ModItems.ORDER)) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.NO_ORDER;
+        NbtCompound nbt = DataCompat.copy(orderStack);
+        if (nbt == null || isExpired(nbt)) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.EXPIRED;
+        if (action == cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PLATE && isOutputBlocked()) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.OUTPUT_BLOCKED;
+        if (action == cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PLATE && nbt.getBoolean(ModConstants.NBT_DELIVERY)) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.DELIVERY_REQUIRES_PACKAGING;
+        if (getFoodListIfSatisfied(nbt) == null) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.MISSING_FOOD;
+        if (action == cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PACK && ConfigManager.get().countertopConsumeLeather && countAvailablePapers() <= 0) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.MISSING_PACKAGING;
+        if (action == cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PLATE && countAvailablePlates() <= 0) return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.MISSING_PLATE;
+        return cn.breezeth.ordertocook.api.CountertopAutomationApi.Status.SUCCESS;
     }
 
     public void tryPackOrder(PlayerEntity player) {
@@ -63,7 +82,12 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
         if (isExpired(nbt)) return;
 
         NbtCompound foodList = getFoodListIfSatisfied(nbt);
-        if (foodList == null) return;
+        if (foodList == null) {
+            if (player instanceof ServerPlayerEntity sp) {
+                sp.sendMessage(Text.translatable("message.ordertocook.countertop.missing_food").formatted(Formatting.RED), true);
+            }
+            return;
+        }
 
         if (ConfigManager.get().countertopConsumeLeather) {
             if (!tryConsumeOnePaper()) {
@@ -75,19 +99,7 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
             }
         }
 
-        // Consume items
-        for (String key : foodList.getKeys()) {
-            int required = foodList.getInt(key);
-            for (int i = 1; i < 13; i++) {
-                if (required <= 0) break;
-                ItemStack stack = inventory.get(i);
-                if (!stack.isEmpty() && Registries.ITEM.getId(stack.getItem()).toString().equals(key)) {
-                    int consume = Math.min(stack.getCount(), required);
-                    stack.decrement(consume);
-                    required -= consume;
-                }
-            }
-        }
+        consumeFoodList(foodList);
 
         // Create Takeout Bag
         ItemStack bag = new ItemStack(ModItems.TAKEOUT_BAG);
@@ -152,6 +164,11 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
         
         DataCompat.set(bag, bagNbt);
         
+        if (world instanceof net.minecraft.server.world.ServerWorld lifecycleWorld) {
+            cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                    cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.PACKED,
+                    lifecycleWorld, player, orderStack);
+        }
         // Consume Order
         inventory.set(0, ItemStack.EMPTY);
         
@@ -168,15 +185,76 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
                 if (world.getBlockEntity(bagPos) instanceof TakeoutBagBlockEntity bagBe) {
                     bagBe.setBagStack(bag.copy());
                 }
+                spawnFreshSteam(bagPos);
             } else {
                 ItemEntity entity = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 1.2, pos.getZ() + 0.5, bag);
                 entity.setVelocity(0, 0.2, 0);
                 world.spawnEntity(entity);
+                spawnFreshSteam(pos.up());
             }
         }
         
+        closeCountertopScreen(player);
         refreshAvailableCounts();
         markDirty();
+    }
+
+    public void refreshIngredientStatus(PlayerEntity player, boolean sendDetails) {
+        if (!(player instanceof ServerPlayerEntity sp) || world == null || world.isClient) return;
+        ItemStack orderStack = inventory.get(0);
+        if (orderStack.isEmpty() || !orderStack.isOf(ModItems.ORDER)) {
+            clearIngredientQueryData();
+            propertyDelegate.set(2, 0);
+            return;
+        }
+        NbtCompound nbt = DataCompat.copy(orderStack);
+        if (nbt == null || !nbt.contains("FoodList")) {
+            clearIngredientQueryData();
+            propertyDelegate.set(2, 2);
+            if (sendDetails) sp.sendMessage(Text.translatable("message.ordertocook.countertop.query_invalid").formatted(Formatting.RED), false);
+            return;
+        }
+        if (isExpired(nbt)) {
+            clearIngredientQueryData();
+            propertyDelegate.set(2, 0);
+            return;
+        }
+        NbtCompound foodList = nbt.getCompound("FoodList");
+        Map<String, Integer> availableItems = collectAvailableItems(foodList);
+        clearIngredientQueryData();
+        boolean missing = false;
+        int missingIndex = 0;
+        for (String key : foodList.getKeys()) {
+            int required = foodList.getInt(key);
+            int available = availableItems.getOrDefault(key, 0);
+            if (available >= required) continue;
+            if (!missing && sendDetails) {
+                sp.sendMessage(Text.translatable("message.ordertocook.countertop.query_missing_header").formatted(Formatting.YELLOW), false);
+            }
+            missing = true;
+            Identifier id = Identifier.tryParse(key);
+            Text foodName = id == null ? Text.literal(key) : new ItemStack(Registries.ITEM.get(id)).getName();
+            if (id != null && missingIndex < 6) {
+                int base = 4 + missingIndex * 3;
+                propertyDelegate.set(base, Registries.ITEM.getRawId(Registries.ITEM.get(id)));
+                propertyDelegate.set(base + 1, required);
+                propertyDelegate.set(base + 2, available);
+                missingIndex++;
+            }
+            if (sendDetails) {
+                sp.sendMessage(Text.translatable("message.ordertocook.countertop.query_missing_detail",
+                        foodName, required, available, required - available).formatted(Formatting.YELLOW), false);
+            }
+        }
+        propertyDelegate.set(3, missingIndex);
+        propertyDelegate.set(2, missing ? 2 : 1);
+        if (!missing && sendDetails) {
+            sp.sendMessage(Text.translatable("message.ordertocook.countertop.query_ready").formatted(Formatting.GREEN));
+        }
+    }
+
+    private void clearIngredientQueryData() {
+        for (int i = 3; i < propertyDelegate.size(); i++) propertyDelegate.set(i, 0);
     }
 
     public void tryPlateOrder(PlayerEntity player) {
@@ -232,6 +310,11 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
             plated.setCustomName(orderStack.getName());
         }
 
+        if (world instanceof net.minecraft.server.world.ServerWorld lifecycleWorld) {
+            cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                    cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.PACKED,
+                    lifecycleWorld, player, orderStack);
+        }
         inventory.set(0, ItemStack.EMPTY);
         BlockPos platePos = pos.up();
         Direction facing = Direction.NORTH;
@@ -244,9 +327,32 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
             foodPlateBe.setPlateStack(plated.copy());
         }
         world.playSound(null, pos, ModSounds.FOOD_PLATE_PLACE, SoundCategory.BLOCKS, 0.9f, 1.0f);
+        spawnFreshSteam(platePos);
 
+        closeCountertopScreen(player);
         refreshAvailableCounts();
         markDirty();
+    }
+
+    private void spawnFreshSteam(BlockPos outputPos) {
+        if (!(world instanceof ServerWorld serverWorld)) return;
+        serverWorld.spawnParticles(
+                ParticleTypes.CLOUD,
+                outputPos.getX() + 0.5,
+                outputPos.getY() + 0.35,
+                outputPos.getZ() + 0.5,
+                6,
+                0.18,
+                0.05,
+                0.18,
+                0.01
+        );
+    }
+
+    private void closeCountertopScreen(PlayerEntity player) {
+        if (player instanceof ServerPlayerEntity sp) {
+            sp.closeHandledScreen();
+        }
     }
 
     private boolean isOutputBlocked() {
@@ -276,14 +382,7 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
     private NbtCompound getFoodListIfSatisfied(NbtCompound nbt) {
         if (!nbt.contains("FoodList")) return null;
         NbtCompound foodList = nbt.getCompound("FoodList");
-        Map<String, Integer> availableItems = new HashMap<>();
-        for (int i = 1; i < 13; i++) {
-            ItemStack stack = inventory.get(i);
-            if (!stack.isEmpty()) {
-                String id = Registries.ITEM.getId(stack.getItem()).toString();
-                availableItems.put(id, availableItems.getOrDefault(id, 0) + stack.getCount());
-            }
-        }
+        Map<String, Integer> availableItems = collectAvailableItems(foodList);
         for (String key : foodList.getKeys()) {
             if (availableItems.getOrDefault(key, 0) < foodList.getInt(key)) {
                 return null;
@@ -292,9 +391,23 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
         return foodList;
     }
 
+    private Map<String, Integer> collectAvailableItems(NbtCompound foodList) {
+        Map<String, Integer> availableItems = new HashMap<>(
+                cn.breezeth.ordertocook.api.IngredientSourceCompatApi.countAllNearby(world, pos, 24, foodList.getKeys()));
+        for (int i = 1; i < 13; i++) {
+            ItemStack stack = inventory.get(i);
+            if (!stack.isEmpty()) {
+                String id = Registries.ITEM.getId(stack.getItem()).toString();
+                availableItems.put(id, availableItems.getOrDefault(id, 0) + stack.getCount());
+            }
+        }
+        return availableItems;
+    }
+
     private void consumeFoodList(NbtCompound foodList) {
         for (String key : foodList.getKeys()) {
             int required = foodList.getInt(key);
+            required -= cn.breezeth.ordertocook.api.IngredientSourceCompatApi.extractNearby(world, pos, 24, key, required, false);
             for (int i = 1; i < 13 && required > 0; i++) {
                 ItemStack stack = inventory.get(i);
                 if (!stack.isEmpty() && Registries.ITEM.getId(stack.getItem()).toString().equals(key)) {
@@ -307,98 +420,25 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
     }
 
     private boolean tryConsumeOnePaper() {
-        if (this.world == null || this.world.isClient) return false;
-        BlockPos best = null;
-        int bestDist = Integer.MAX_VALUE;
-
-        BlockPos.Mutable m = new BlockPos.Mutable();
-        for (int dy = -5; dy <= 5; dy++) {
-            for (int dx = -5; dx <= 5; dx++) {
-                for (int dz = -5; dz <= 5; dz++) {
-                    m.set(this.pos.getX() + dx, this.pos.getY() + dy, this.pos.getZ() + dz);
-                    BlockState state = this.world.getBlockState(m);
-                    if (!(state.getBlock() instanceof ShelfBlock)) continue;
-                    int papers = state.get(ShelfBlock.PAPERS);
-                    if (papers <= 0) continue;
-                    int dist = dx * dx + dy * dy + dz * dz;
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        best = m.toImmutable();
-                    }
-                }
-            }
-        }
-        if (best == null) return false;
-        BlockState state = this.world.getBlockState(best);
-        if (!(state.getBlock() instanceof ShelfBlock)) return false;
-        int papers = state.get(ShelfBlock.PAPERS);
-        if (papers <= 0) return false;
-        this.world.setBlockState(best, state.with(ShelfBlock.PAPERS, papers - 1), Block.NOTIFY_ALL);
-        return true;
+        return this.world != null && !this.world.isClient
+                && cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.extractNearby(world, pos, 5,
+                cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.SupplyType.PACKAGING, 1, false) == 1;
     }
 
     private boolean tryConsumeOnePlate() {
-        if (this.world == null || this.world.isClient) return false;
-        BlockPos best = null;
-        int bestDist = Integer.MAX_VALUE;
-        BlockPos.Mutable m = new BlockPos.Mutable();
-        for (int dy = -5; dy <= 5; dy++) {
-            for (int dx = -5; dx <= 5; dx++) {
-                for (int dz = -5; dz <= 5; dz++) {
-                    m.set(this.pos.getX() + dx, this.pos.getY() + dy, this.pos.getZ() + dz);
-                    BlockState state = this.world.getBlockState(m);
-                    if (!(state.getBlock() instanceof PlateShelfBlock)) continue;
-                    int plates = state.get(PlateShelfBlock.PLATES);
-                    if (plates <= 0) continue;
-                    int dist = dx * dx + dy * dy + dz * dz;
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        best = m.toImmutable();
-                    }
-                }
-            }
-        }
-        if (best == null) return false;
-        BlockState state = this.world.getBlockState(best);
-        if (!(state.getBlock() instanceof PlateShelfBlock)) return false;
-        int plates = state.get(PlateShelfBlock.PLATES);
-        if (plates <= 0) return false;
-        this.world.setBlockState(best, state.with(PlateShelfBlock.PLATES, plates - 1), Block.NOTIFY_ALL);
-        return true;
+        return this.world != null && !this.world.isClient
+                && cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.extractNearby(world, pos, 5,
+                cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.SupplyType.CLEAN_PLATE, 1, false) == 1;
     }
 
     public int countAvailablePapers() {
-        if (this.world == null) return 0;
-        int total = 0;
-        BlockPos.Mutable m = new BlockPos.Mutable();
-        for (int dy = -5; dy <= 5; dy++) {
-            for (int dx = -5; dx <= 5; dx++) {
-                for (int dz = -5; dz <= 5; dz++) {
-                    m.set(this.pos.getX() + dx, this.pos.getY() + dy, this.pos.getZ() + dz);
-                    BlockState state = this.world.getBlockState(m);
-                    if (!(state.getBlock() instanceof ShelfBlock)) continue;
-                    total += state.get(ShelfBlock.PAPERS);
-                }
-            }
-        }
-        return total;
+        return cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.countNearby(world, pos, 5,
+                cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.SupplyType.PACKAGING);
     }
 
     public int countAvailablePlates() {
-        if (this.world == null) return 0;
-        int total = 0;
-        BlockPos.Mutable m = new BlockPos.Mutable();
-        for (int dy = -5; dy <= 5; dy++) {
-            for (int dx = -5; dx <= 5; dx++) {
-                for (int dz = -5; dz <= 5; dz++) {
-                    m.set(this.pos.getX() + dx, this.pos.getY() + dy, this.pos.getZ() + dz);
-                    BlockState state = this.world.getBlockState(m);
-                    if (!(state.getBlock() instanceof PlateShelfBlock)) continue;
-                    total += state.get(PlateShelfBlock.PLATES);
-                }
-            }
-        }
-        return total;
+        return cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.countNearby(world, pos, 5,
+                cn.breezeth.ordertocook.api.RestaurantSupplyCompatApi.SupplyType.CLEAN_PLATE);
     }
 
     public void refreshAvailableCounts() {
@@ -422,6 +462,7 @@ public class TakeoutBoxBlockEntity extends BlockEntity implements NamedScreenHan
     public ScreenHandler createMenu(int syncId, PlayerInventory playerInventory, PlayerEntity player) {
         if (!playerInventory.player.getWorld().isClient) {
             refreshAvailableCounts();
+            refreshIngredientStatus(player, false);
         }
         return new TakeoutBoxScreenHandler(syncId, playerInventory, this, this.propertyDelegate);
     }

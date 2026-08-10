@@ -58,7 +58,7 @@ public final class ModConstants {
     public static final int URGENT_DURATION_TICKS = 10 * 60 * 20; // 10 minutes
     public static final int NORMAL_DURATION_TICKS = 30 * 60 * 20; // 30 minutes
 
-    public static final int DELIVERY_POSITION_ATTEMPTS = 32;
+    public static final int DELIVERY_POSITION_ATTEMPTS = 8;
     public static final int SHORT_MIN_DISTANCE = 50;
     public static final int SHORT_MAX_DISTANCE = 450;
     public static final int LONG_MIN_DISTANCE = 1500;

@@ -9,7 +9,6 @@ import net.minecraft.util.Formatting;
 import java.util.List;
 
 public final class CustomerProfileLibrary {
-    private static final double EASTER_EGG_RATE = 0.08D;
     private static final List<EasterEggCustomer> EASTER_EGGS = List.of(
             new EasterEggCustomer("Breezeth", "微风(作者)", "a1b3e264-652b-42db-b8e7-5393b409776b"),
             new EasterEggCustomer("Kuroneko_RikoP", "猫猫子(贡献)", "e2ca8e07-c1b5-46e1-86f9-932718a44e60"),
@@ -30,7 +29,10 @@ public final class CustomerProfileLibrary {
     }
 
     public static CustomerProfile createOrderProfile(ServerWorld world) {
-        if (!EASTER_EGGS.isEmpty() && world.random.nextDouble() < EASTER_EGG_RATE) {
+        double easterEggRate = ConfigManager.get().easterEggCustomerRate;
+        if (easterEggRate > 1.0 && easterEggRate <= 100.0) easterEggRate /= 100.0;
+        easterEggRate = Math.max(0.0, Math.min(1.0, easterEggRate));
+        if (!EASTER_EGGS.isEmpty() && world.random.nextDouble() < easterEggRate) {
             return createGuaranteedEasterEggProfile(world);
         }
 

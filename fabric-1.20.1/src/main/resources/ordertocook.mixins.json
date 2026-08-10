@@ -7,9 +7,7 @@
 	"mixins": [
 		"PlayerEntityMixin",
 		"MotorcycleFallDamageMixin",
-		"ZombieEntityMixin",
-		"ItemEntityMixin",
-		"accessor.MobEntityAccessor"
+		"ItemEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

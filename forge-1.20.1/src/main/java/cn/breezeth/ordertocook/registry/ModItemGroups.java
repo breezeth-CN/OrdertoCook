@@ -24,6 +24,9 @@ public class ModItemGroups {
                 entries.accept(ModItems.ORDER_MACHINE.get());
                 entries.accept(ModItems.COUNTERTOP.get());
                 entries.accept(ModItems.WASHINGTABLE.get());
+                entries.accept(ModItems.DISHWASHER.get());
+                entries.accept(ModItems.REFRIGERATOR.get());
+                entries.accept(ModItems.STOVE.get());
                 entries.accept(ModItems.TAKEOUT_BAG.get());
                 entries.accept(ModItems.CHAIR.get());
                 entries.accept(ModItems.SHELF.get());
@@ -34,6 +37,7 @@ public class ModItemGroups {
                 entries.accept(ModItems.FOOD_PLATE.get());
                 entries.accept(ModItems.MOTORCYCLE.get());
                 entries.accept(ModItems.HELMET.get());
+                entries.accept(ModItems.OTC_UPGRADE_BOX.get());
                 entries.accept(ModItems.ORDER.get());
                 entries.accept(ModItems.CHEF_COIN_1.get());
                 entries.accept(ModItems.CHEF_COIN_5.get());

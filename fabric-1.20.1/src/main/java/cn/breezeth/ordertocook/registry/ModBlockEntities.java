@@ -12,6 +12,9 @@ import net.minecraft.util.Identifier;
 import cn.breezeth.ordertocook.block.entity.TakeoutBoxBlockEntity;
 import cn.breezeth.ordertocook.block.entity.FoodPlateBlockEntity;
 import cn.breezeth.ordertocook.block.entity.WashingTableBlockEntity;
+import cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity;
+import cn.breezeth.ordertocook.block.entity.RefrigeratorBlockEntity;
+import cn.breezeth.ordertocook.block.entity.StoveBlockEntity;
 
 public class ModBlockEntities {
     public static final BlockEntityType<OrderMachineBlockEntity> ORDER_MACHINE = Registry.register(
@@ -48,6 +51,24 @@ public class ModBlockEntities {
             Registries.BLOCK_ENTITY_TYPE,
             new Identifier(ModConstants.MOD_ID, "washing_table"),
             BlockEntityType.Builder.create(WashingTableBlockEntity::new, ModBlocks.WASHINGTABLE).build(null)
+    );
+
+    public static final BlockEntityType<DishwasherBlockEntity> DISHWASHER = Registry.register(
+            Registries.BLOCK_ENTITY_TYPE,
+            new Identifier(ModConstants.MOD_ID, "dishwasher"),
+            BlockEntityType.Builder.create(DishwasherBlockEntity::new, ModBlocks.DISHWASHER).build(null)
+    );
+
+    public static final BlockEntityType<RefrigeratorBlockEntity> REFRIGERATOR = Registry.register(
+            Registries.BLOCK_ENTITY_TYPE,
+            new Identifier(ModConstants.MOD_ID, "refrigerator"),
+            BlockEntityType.Builder.create(RefrigeratorBlockEntity::new, ModBlocks.REFRIGERATOR).build(null)
+    );
+
+    public static final BlockEntityType<StoveBlockEntity> STOVE = Registry.register(
+            Registries.BLOCK_ENTITY_TYPE,
+            new Identifier(ModConstants.MOD_ID, "stove"),
+            BlockEntityType.Builder.create(StoveBlockEntity::new, ModBlocks.STOVE).build(null)
     );
 
     public static void registerBlockEntities() {

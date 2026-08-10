@@ -5,9 +5,14 @@ import cn.breezeth.ordertocook.item.ChefCoinItem;
 import cn.breezeth.ordertocook.item.FoodPlateItem;
 import cn.breezeth.ordertocook.item.MotorcycleItem;
 import cn.breezeth.ordertocook.item.OrderItem;
+import cn.breezeth.ordertocook.item.OtcUpgradeBoxItem;
+import cn.breezeth.ordertocook.item.PrefilledShelfBlockItem;
 import cn.breezeth.ordertocook.item.TakeoutBagItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -26,12 +31,33 @@ public class ModItems {
             () -> new BlockItem(ModBlocks.COUNTERTOP.get(), new Item.Properties()));
     public static final RegistryObject<Item> WASHINGTABLE = ITEMS.register("washingtable",
             () -> new BlockItem(ModBlocks.WASHINGTABLE.get(), new Item.Properties()));
+    public static final RegistryObject<Item> DISHWASHER = ITEMS.register("dishwasher",
+            () -> new BlockItem(ModBlocks.DISHWASHER.get(), new Item.Properties()) {
+                @Override
+                public void appendHoverText(ItemStack stack, @javax.annotation.Nullable net.minecraft.world.level.Level level, java.util.List<Component> tooltip, TooltipFlag flag) {
+                    tooltip.add(Component.translatable("block.ordertocook.dishwasher.desc"));
+                }
+            });
+    public static final RegistryObject<Item> REFRIGERATOR = ITEMS.register("refrigerator",
+            () -> new BlockItem(ModBlocks.REFRIGERATOR.get(), new Item.Properties()) {
+                @Override
+                public void appendHoverText(ItemStack stack, @javax.annotation.Nullable net.minecraft.world.level.Level level, java.util.List<Component> tooltip, TooltipFlag flag) {
+                    tooltip.add(Component.translatable("block.ordertocook.refrigerator.desc"));
+                }
+            });
+    public static final RegistryObject<Item> STOVE = ITEMS.register("stove",
+            () -> new BlockItem(ModBlocks.STOVE.get(), new Item.Properties()) {
+                @Override
+                public void appendHoverText(ItemStack stack, @javax.annotation.Nullable net.minecraft.world.level.Level level, java.util.List<Component> tooltip, TooltipFlag flag) {
+                    tooltip.add(Component.translatable("block.ordertocook.stove.desc"));
+                }
+            });
     public static final RegistryObject<Item> CHAIR = ITEMS.register("chair",
             () -> new BlockItem(ModBlocks.CHAIR.get(), new Item.Properties()));
     public static final RegistryObject<Item> SHELF = ITEMS.register("shelf",
-            () -> new BlockItem(ModBlocks.SHELF.get(), new Item.Properties()));
+            () -> new PrefilledShelfBlockItem(ModBlocks.SHELF.get(), new Item.Properties(), PrefilledShelfBlockItem.PREFILL_PACKAGING));
     public static final RegistryObject<Item> PLATE_SHELF = ITEMS.register("plate_shelf",
-            () -> new BlockItem(ModBlocks.PLATE_SHELF.get(), new Item.Properties()));
+            () -> new PrefilledShelfBlockItem(ModBlocks.PLATE_SHELF.get(), new Item.Properties(), PrefilledShelfBlockItem.PREFILL_PLATE));
     public static final RegistryObject<Item> BOARD = ITEMS.register("board",
             () -> new BlockItem(ModBlocks.BOARD.get(), new Item.Properties()));
     public static final RegistryObject<Item> CLEAN_PLATE = ITEMS.register("clean_plate",
@@ -60,6 +86,8 @@ public class ModItems {
             () -> new ChefCoinItem(10000, new Item.Properties()));
     public static final RegistryObject<Item> TAKEOUT_BAG = ITEMS.register("takeout_bag",
             () -> new TakeoutBagItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> OTC_UPGRADE_BOX = ITEMS.register("otc_upgrade_box",
+            () -> new OtcUpgradeBoxItem(new Item.Properties().stacksTo(16)));
 
     public static void registerModItems(IEventBus modBus) {
         ITEMS.register(modBus);

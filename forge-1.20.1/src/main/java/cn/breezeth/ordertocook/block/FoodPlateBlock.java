@@ -1,6 +1,8 @@
 package cn.breezeth.ordertocook.block;
 
 import cn.breezeth.ordertocook.block.entity.FoodPlateBlockEntity;
+import cn.breezeth.ordertocook.core.OrderNpcManager;
+import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.registry.ModSounds;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -121,13 +123,20 @@ public class FoodPlateBlock extends BaseEntityBlock {    public static final Dir
         BlockEntity be = world.getBlockEntity(pos);
         boolean wasEating = false;
         if (be instanceof FoodPlateBlockEntity foodPlateBe) {
+            boolean eatingNow = foodPlateBe.isEatingSequenceActive()
+                || (state.hasProperty(STAGE) && isEatingStage(state.getValue(STAGE)));
             ItemStack stack = foodPlateBe.getPlateStack();
-            if (!stack.isEmpty()) {
-                // 检查是否是正在吃东西的阶段
-                if (state.hasProperty(STAGE) && isEatingStage(state.getValue(STAGE))) {
-                    wasEating = true;
+            if (eatingNow) {
+                wasEating = true;
+                ItemStack dirtyPlate = new ItemStack(ModItems.DIRTY_PLATE.get());
+                boolean inserted = player.getInventory().add(dirtyPlate.copy());
+                if (!inserted) {
+                    ItemEntity entity = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5, dirtyPlate.copy());
+                    entity.setDeltaMovement(0, 0.1, 0);
+                    world.addFreshEntity(entity);
                 }
-
+                foodPlateBe.setPlateStack(ItemStack.EMPTY);
+            } else if (!stack.isEmpty()) {
                 boolean inserted = player.getInventory().add(stack.copy());
                 if (!inserted) {
                     ItemEntity entity = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5, stack.copy());
@@ -158,9 +167,14 @@ public class FoodPlateBlock extends BaseEntityBlock {    public static final Dir
             if (!world.isClientSide) {
                 BlockEntity be = world.getBlockEntity(pos);
                 if (be instanceof FoodPlateBlockEntity foodPlateBe) {
-                    ItemStack stack = foodPlateBe.getPlateStack();
-                    if (!stack.isEmpty()) {
-                        ItemEntity entity = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5, stack.copy());
+                    ItemStack storedStack = foodPlateBe.getPlateStack();
+                    if (!storedStack.isEmpty()) {
+                        boolean customerWasEating = foodPlateBe.isEatingSequenceActive()
+                                || (state.hasProperty(STAGE) && isEatingStage(state.getValue(STAGE)));
+                        ItemStack dropStack = customerWasEating
+                                ? new ItemStack(ModItems.DIRTY_PLATE.get())
+                                : storedStack.copy();
+                        ItemEntity entity = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5, dropStack);
                         entity.setDeltaMovement(0, 0.1, 0);
                         world.addFreshEntity(entity);
                     }
@@ -192,6 +206,16 @@ public class FoodPlateBlock extends BaseEntityBlock {    public static final Dir
 
             // 打断食用动画，直接进入“从第2秒开始”的缩小消失段。
             customer.startInterruptedEatScaleAnimation();
+            return;
+        }
+
+        Component maidName = OrderNpcManager.interruptTouhouMaidEatingNear(world, platePos);
+        if (maidName != null) {
+            player.displayClientMessage(
+                Component.translatable("message.ordertocook.plate_taken_early", maidName.getString())
+                    .withStyle(ChatFormatting.YELLOW),
+                false
+            );
         }
     }
 }

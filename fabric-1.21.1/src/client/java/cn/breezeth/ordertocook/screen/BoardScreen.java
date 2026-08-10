@@ -176,13 +176,6 @@ public class BoardScreen extends HandledScreen<BoardScreenHandler> {
                 context.drawItem(stack, gx + 1, gy + 1);
                 
                 // 绘制食物营养值
-                int nutrition = nutritionOf(stack);
-                if (nutrition > 0) {
-                    String s = String.valueOf(nutrition);
-                    int sw = this.textRenderer.getWidth(s);
-                    context.drawText(this.textRenderer, s, gx + slotW - 2 - sw, gy + 6, 0x404040, false);
-                }
-                
                 // 绘制悬停效果
                 if (isMouseOverSlot(mouseX, mouseY, gx, gy, slotW, slotH)) {
                     context.drawTexture(editMode ? SLOT_HOVER_DELETE : SLOT_HOVER_NORMAL, 
@@ -301,11 +294,34 @@ public class BoardScreen extends HandledScreen<BoardScreenHandler> {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
-        
+
+        context.draw();
+        renderNutritionCounts(context, mouseX, mouseY);
+
         // 渲染物品提示和按钮提示
         renderTooltips(context, mouseX, mouseY);
         
         drawMouseoverTooltip(context, mouseX, mouseY);
+    }
+
+    private void renderNutritionCounts(DrawContext context, int mouseX, int mouseY) {
+        int startIndex = scrollOffset * COLS;
+        int endIndex = Math.min(this.handler.getTemplates().size(), startIndex + VISIBLE_ROWS * COLS);
+        context.getMatrices().push();
+        context.getMatrices().translate(0.0F, 0.0F, 300.0F);
+        for (int i = startIndex; i < endIndex; i++) {
+            ItemStack stack = this.handler.getTemplates().getStack(i);
+            int nutrition = stack.isEmpty() ? 0 : nutritionOf(stack);
+            if (nutrition <= 0) continue;
+            int local = i - startIndex;
+            int gx = innerX + (local % COLS) * colWidth;
+            int gy = innerY + (local / COLS) * ROW_HEIGHT;
+            if (editMode && isMouseOverSlot(mouseX, mouseY, gx, gy, colWidth - 1, 18)) continue;
+            String text = String.valueOf(nutrition);
+            context.drawText(this.textRenderer, text,
+                    gx + colWidth - 3 - this.textRenderer.getWidth(text), gy + 6, 0x404040, false);
+        }
+        context.getMatrices().pop();
     }
 
     @Override

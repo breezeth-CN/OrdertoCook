@@ -1,0 +1,24 @@
+{
+  "parent": "ordertocook:ordertocook/root",
+  "display": {
+    "icon": {
+      "item": "ordertocook:dishwasher"
+    },
+    "title": {
+      "translate": "advancement.ordertocook.dishwasher"
+    },
+    "description": {
+      "translate": "advancement.ordertocook.dishwasher.desc"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "got_dishwasher": {
+      "trigger": "ordertocook:dishwasher_upgrade",
+      "conditions": {}
+    }
+  }
+}

@@ -47,6 +47,10 @@ public final class ModClientNetworking {
         });
     }
 
+    public static void handleCustomMenuSync(ModNetworking.CustomMenuSyncS2CPayload payload) {
+        cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(payload.json());
+    }
+
     public static void handleRiderAnim(ModNetworking.RiderAnimS2CPayload payload) {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> applyRemoteRiderAnimation(client, payload.playerUuid(), payload.animType(), payload.animate()));

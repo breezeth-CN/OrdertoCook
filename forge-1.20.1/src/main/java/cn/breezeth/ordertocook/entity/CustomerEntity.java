@@ -15,11 +15,12 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
-import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -30,7 +31,7 @@ import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-public class CustomerEntity extends Zombie implements GeoEntity {
+public class CustomerEntity extends PathfinderMob implements GeoEntity {
     private static final EntityDataAccessor<Integer> TEXTURE_VARIANT = SynchedEntityData.defineId(CustomerEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> SKIN_ACCOUNT = SynchedEntityData.defineId(CustomerEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> SKIN_UUID = SynchedEntityData.defineId(CustomerEntity.class, EntityDataSerializers.STRING);
@@ -71,13 +72,13 @@ public class CustomerEntity extends Zombie implements GeoEntity {
     private String pendingBoomCustomerName = "";
     private String pendingBoomPlayerUuid = "";
 
-    public CustomerEntity(EntityType<? extends Zombie> entityType, Level world) {
+    public CustomerEntity(EntityType<? extends PathfinderMob> entityType, Level world) {
         super(entityType, world);
         this.setCanPickUpLoot(false);
     }
 
     public static AttributeSupplier.Builder createCustomerAttributes() {
-        return Zombie.createAttributes()
+        return Mob.createMobAttributes()
                 .add(Attributes.MOVEMENT_SPEED, 0.0D)
                 .add(Attributes.ATTACK_DAMAGE, 0.0D);
     }
@@ -110,16 +111,6 @@ public class CustomerEntity extends Zombie implements GeoEntity {
             this.setTarget(null);
             tickServerAction();
         }
-    }
-
-    @Override
-    public boolean isSunSensitive() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldDespawnInPeaceful() {
-        return false;
     }
 
     @Override

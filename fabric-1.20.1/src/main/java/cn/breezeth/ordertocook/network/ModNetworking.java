@@ -34,6 +34,7 @@ public final class ModNetworking {
     private static final Identifier RIDER_SOUND_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_sound_c2s");
     private static final Identifier RIDER_ANIM_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_c2s");
     private static final Identifier RIDER_ANIM_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_s2c");
+    public static final Identifier CUSTOM_MENU_SYNC_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_sync_s2c");
     public static final int RIDER_SOUND_HORN = 1;
     public static final int RIDER_SOUND_CHAIR_AMBIENT = 2;
     public static final int RIDER_SOUND_CHAIR_TRADE = 3;
@@ -285,6 +286,18 @@ public final class ModNetworking {
             out.writeVarInt(animType);
             out.writeBoolean(animate);
             ServerPlayNetworking.send(target, RIDER_ANIM_S2C, out);
+        }
+    }
+
+    public static void sendCustomMenuSync(ServerPlayerEntity player) {
+        PacketByteBuf out = new PacketByteBuf(Unpooled.buffer());
+        out.writeString(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson(), 32767);
+        ServerPlayNetworking.send(player, CUSTOM_MENU_SYNC_S2C, out);
+    }
+
+    public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            sendCustomMenuSync(player);
         }
     }
 

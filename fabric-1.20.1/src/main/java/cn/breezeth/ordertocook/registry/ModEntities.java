@@ -20,6 +20,15 @@ public class ModEntities {
                     .build(new Identifier(ModConstants.MOD_ID, "seat").toString())
     );
 
+    public static final EntityType<SeatEntity> CUSTOMER_SEAT = Registry.register(
+            Registries.ENTITY_TYPE,
+            new Identifier(ModConstants.MOD_ID, "customer_seat"),
+            EntityType.Builder.create(SeatEntity::new, SpawnGroup.MISC)
+                    .setDimensions(0.5f, 0.5f)
+                    .disableSummon()
+                    .build(new Identifier(ModConstants.MOD_ID, "customer_seat").toString())
+    );
+
     public static final EntityType<CustomerEntity> CUSTOMER = Registry.register(
             Registries.ENTITY_TYPE,
             new Identifier(ModConstants.MOD_ID, "customer"),

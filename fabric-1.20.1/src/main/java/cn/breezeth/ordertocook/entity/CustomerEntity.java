@@ -10,7 +10,8 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
-import net.minecraft.entity.mob.ZombieEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleTypes;
@@ -30,7 +31,7 @@ import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-public class CustomerEntity extends ZombieEntity implements GeoEntity {
+public class CustomerEntity extends PathAwareEntity implements GeoEntity {
     private static final TrackedData<Integer> TEXTURE_VARIANT = DataTracker.registerData(CustomerEntity.class, TrackedDataHandlerRegistry.INTEGER);
     private static final TrackedData<String> SKIN_ACCOUNT = DataTracker.registerData(CustomerEntity.class, TrackedDataHandlerRegistry.STRING);
     private static final TrackedData<String> SKIN_UUID = DataTracker.registerData(CustomerEntity.class, TrackedDataHandlerRegistry.STRING);
@@ -71,13 +72,13 @@ public class CustomerEntity extends ZombieEntity implements GeoEntity {
     private String pendingBoomCustomerName = "";
     private String pendingBoomPlayerUuid = "";
 
-    public CustomerEntity(EntityType<? extends ZombieEntity> entityType, World world) {
+    public CustomerEntity(EntityType<? extends PathAwareEntity> entityType, World world) {
         super(entityType, world);
         this.setCanPickUpLoot(false);
     }
 
     public static DefaultAttributeContainer.Builder createCustomerAttributes() {
-        return ZombieEntity.createZombieAttributes()
+        return MobEntity.createMobAttributes()
                 .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.0D)
                 .add(EntityAttributes.GENERIC_ATTACK_DAMAGE, 0.0D);
     }
@@ -110,16 +111,6 @@ public class CustomerEntity extends ZombieEntity implements GeoEntity {
             this.setTarget(null);
             tickServerAction();
         }
-    }
-
-    @Override
-    public boolean burnsInDaylight() {
-        return false;
-    }
-
-    @Override
-    public boolean isDisallowedInPeaceful() {
-        return false;
     }
 
     @Override

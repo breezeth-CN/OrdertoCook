@@ -2,17 +2,28 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "P P",
-    "  P",
-    "P P"
+    "PS ",
+    "PC ",
+    "PS "
   ],
   "key": {
     "P": {
       "tag": "minecraft:planks"
+    },
+    "S": {
+      "tag": "minecraft:wooden_slabs"
+    },
+    "C": {
+      "item": "ordertocook:clean_plate"
     }
   },
   "result": {
     "id": "ordertocook:plate_shelf",
-    "count": 1
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "OtcPrefill": true
+      }
+    }
   }
 }

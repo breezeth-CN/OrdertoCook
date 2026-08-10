@@ -154,6 +154,7 @@ public class ConfigManager {
         changed |= addMissingConfigKey(json, "vanillaEraFaresChronCompat", new JsonPrimitive(false));
         changed |= addMissingConfigKey(json, "sdmShopCurrencyCompat", new JsonPrimitive(false));
         changed |= addMissingConfigKey(json, "sdmShopCurrencyKey", new JsonPrimitive("basic_money"));
+        changed |= addMissingConfigKey(json, "touhouLittleMaidCustomerCompat", new JsonPrimitive(false));
         return changed;
     }
 
@@ -251,12 +252,6 @@ public class ConfigManager {
         if (customMenuNutritionMap == null) {
             rebuildCustomMenuNutritionMap();
         }
-        for (CustomMenuEntry entry : customMenuItems) {
-            if (resolveEntryItem(entry) == item) {
-                customMenuNutritionMap.put(item, entry.hunger);
-                return entry.hunger;
-            }
-        }
         return customMenuNutritionMap.getOrDefault(item, 0);
     }
 
@@ -327,7 +322,7 @@ public class ConfigManager {
         Map<Item, Integer> map = new HashMap<>();
         for (CustomMenuEntry entry : customMenuItems) {
             Item item = resolveEntryItem(entry);
-            if (item != null) {
+            if (item != null && entry.nbt == null) {
                 map.put(item, entry.hunger);
             }
         }
@@ -345,13 +340,22 @@ public class ConfigManager {
     }
 
     private static List<CustomMenuEntry> loadCustomMenuItems(File file) {
-        List<CustomMenuEntry> entries = new ArrayList<>();
         if (!file.exists()) {
             saveDefaultCustomMenuItems(file);
-            return entries;
+            return new ArrayList<>();
         }
         try {
-            JsonObject root = JANKSON.load(stripBom(Files.readString(file.toPath(), StandardCharsets.UTF_8)));
+            return parseCustomMenuItemsJson(Files.readString(file.toPath(), StandardCharsets.UTF_8), file.getName());
+        } catch (Exception e) {
+            OrderToCookMod.LOGGER.error("Failed to load custom menu items config: {}", file.getName(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    private static List<CustomMenuEntry> parseCustomMenuItemsJson(String json, String source) {
+        List<CustomMenuEntry> entries = new ArrayList<>();
+        try {
+            JsonObject root = JANKSON.load(stripBom(json));
             JsonElement itemsElement = root.get("items");
             if (itemsElement instanceof JsonArray arr) {
                 for (JsonElement element : arr) {
@@ -362,9 +366,21 @@ public class ConfigManager {
                 }
             }
         } catch (Exception e) {
-            OrderToCookMod.LOGGER.error("Failed to load custom menu items config: {}", file.getName(), e);
+            OrderToCookMod.LOGGER.error("Failed to parse custom menu items from {}", source, e);
         }
         return entries;
+    }
+
+    public static synchronized String exportCustomMenuItemsJson() {
+        if (config == null) load();
+        reloadCustomMenuItemsIfChanged();
+        return customMenuItemsToJson(customMenuItems);
+    }
+
+    public static synchronized void applySyncedCustomMenuItems(String json) {
+        customMenuItems = parseCustomMenuItemsJson(json, "server sync");
+        rebuildCustomMenuNutritionMap();
+        OrderToCookMod.LOGGER.info("Applied {} custom menu items from server", customMenuItems.size());
     }
 
     private static void saveDefaultCustomMenuItems(File file) {
@@ -384,6 +400,16 @@ public class ConfigManager {
             parent.mkdirs();
         }
         backupCustomMenuFile(file);
+        String result = customMenuItemsToJson(entries);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(result.getBytes(StandardCharsets.UTF_8));
+            activeCustomMenuFileLastModified = file.lastModified();
+        } catch (IOException e) {
+            OrderToCookMod.LOGGER.error("Failed to save custom menu items config {}", file.getName(), e);
+        }
+    }
+
+    private static String customMenuItemsToJson(List<CustomMenuEntry> entries) {
         JsonObject root = new JsonObject();
         JsonArray arr = new JsonArray();
         for (CustomMenuEntry entry : entries) {
@@ -396,13 +422,7 @@ public class ConfigManager {
             arr.add(obj);
         }
         root.put("items", arr);
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            String result = root.toJson(true, true);
-            out.write(result.getBytes());
-            activeCustomMenuFileLastModified = file.lastModified();
-        } catch (IOException e) {
-            OrderToCookMod.LOGGER.error("Failed to save custom menu items config {}", file.getName(), e);
-        }
+        return root.toJson(true, true);
     }
 
     private static boolean existingCustomMenuFileHasEntries(File file) {

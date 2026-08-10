@@ -12,6 +12,11 @@ import net.minecraft.screen.ArrayPropertyDelegate;
 import net.minecraft.screen.slot.Slot;
 
 public class BoardScreenHandler extends ScreenHandler {
+    public static final int SORT_BUTTON_ID = -1;
+    private static final int PLAYER_BUTTON_COUNT = 36;
+    private static final int MAX_POSITIVE_BUTTON_ID = 127;
+    private static final int POSITIVE_REMOVE_BUTTONS = MAX_POSITIVE_BUTTON_ID - PLAYER_BUTTON_COUNT + 1;
+    private static final int REMOVE_BUTTON_WRAP = 220;
     private final Inventory templates;
     private final PlayerInventory playerInv;
     private final PropertyDelegate delegate;
@@ -61,6 +66,27 @@ public class BoardScreenHandler extends ScreenHandler {
         return delegate.get(0);
     }
 
+    /**
+     * Container button ids are signed bytes in Minecraft 1.20.1. Keep every id
+     * in [-128, 127] while still reserving 0..35 for player inventory actions.
+     */
+    public static int removeButtonId(int templateIndex) {
+        if (templateIndex < 0 || templateIndex >= 150) return SORT_BUTTON_ID;
+        return templateIndex < POSITIVE_REMOVE_BUTTONS
+                ? PLAYER_BUTTON_COUNT + templateIndex
+                : templateIndex - REMOVE_BUTTON_WRAP;
+    }
+
+    private static int templateIndexFromButtonId(int id) {
+        if (id >= PLAYER_BUTTON_COUNT && id <= MAX_POSITIVE_BUTTON_ID) {
+            return id - PLAYER_BUTTON_COUNT;
+        }
+        if (id >= -128 && id <= -71) {
+            return id + REMOVE_BUTTON_WRAP;
+        }
+        return -1;
+    }
+
     @Override
     public ItemStack quickMove(PlayerEntity player, int slot) {
         return ItemStack.EMPTY;
@@ -88,7 +114,7 @@ public class BoardScreenHandler extends ScreenHandler {
     @Override
     public boolean onButtonClick(PlayerEntity player, int id) {
         if (!(templates instanceof BoardBlockEntity be)) return false;
-        if (id == 1000) {
+        if (id == SORT_BUTTON_ID) {
             be.toggleSortMode();
             return true;
         }
@@ -97,8 +123,8 @@ public class BoardScreenHandler extends ScreenHandler {
             be.tryAddTemplate(src);
             return true;
         }
-        if (id >= 100) {
-            int idx = id - 100;
+        int idx = templateIndexFromButtonId(id);
+        if (idx >= 0 && idx < templates.size()) {
             be.removeAt(idx);
             return true;
         }

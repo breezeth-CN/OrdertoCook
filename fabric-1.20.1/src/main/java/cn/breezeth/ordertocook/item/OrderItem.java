@@ -118,6 +118,7 @@ public class OrderItem extends Item {
             DataCompat.set(stack, nbt);
 
             if (world instanceof ServerWorld sw) {
+                cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.EXPIRED, sw, player, stack);
                 String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
                 OrderNpcManager.despawnFor(sw, player, orderId, OrderNpcManager.DespawnReason.EXPIRED);
             }

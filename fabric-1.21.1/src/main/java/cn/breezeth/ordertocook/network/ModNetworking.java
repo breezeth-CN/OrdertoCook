@@ -112,6 +112,17 @@ public final class ModNetworking {
         public CustomPayload.Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record CustomMenuSyncS2CPayload(String json) implements CustomPayload {
+        public static final CustomPayload.Id<CustomMenuSyncS2CPayload> ID =
+                new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID, "custom_menu_sync_s2c"));
+        public static final PacketCodec<PacketByteBuf, CustomMenuSyncS2CPayload> CODEC =
+                PacketCodec.of((payload, buf) -> buf.writeString(payload.json(), 32767),
+                        buf -> new CustomMenuSyncS2CPayload(buf.readString(32767)));
+
+        @Override
+        public CustomPayload.Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public static final class ToggleMotorcycleLightPayload implements CustomPayload {
         public static final CustomPayload.Id<ToggleMotorcycleLightPayload> ID =
                 new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID, "toggle_motorcycle_light"));
@@ -226,6 +237,7 @@ public final class ModNetworking {
         PayloadTypeRegistry.playC2S().register(RestaurantRenameC2SPayload.ID, RestaurantRenameC2SPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RestaurantNameQueryC2SPayload.ID, RestaurantNameQueryC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(RestaurantNameS2CPayload.ID, RestaurantNameS2CPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CustomMenuSyncS2CPayload.ID, CustomMenuSyncS2CPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ToggleMotorcycleLightPayload.ID, ToggleMotorcycleLightPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StartWashingPayload.ID, StartWashingPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StopWashingPayload.ID, StopWashingPayload.CODEC);
@@ -411,5 +423,16 @@ public final class ModNetworking {
                 ServerPlayNetworking.send(target, new RiderAnimS2CPayload(context.player().getUuid(), payload.animType(), payload.animate()));
             }
         });
+    }
+
+    public static void sendCustomMenuSync(net.minecraft.server.network.ServerPlayerEntity player) {
+        ServerPlayNetworking.send(player, new CustomMenuSyncS2CPayload(
+                cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()));
+    }
+
+    public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
+        for (var player : server.getPlayerManager().getPlayerList()) {
+            sendCustomMenuSync(player);
+        }
     }
 }

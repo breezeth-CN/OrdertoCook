@@ -22,7 +22,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class WashingTableManager {
-    private static final long REQUIRED_HOLD_TICKS = 80L;
+    private static final long REQUIRED_HOLD_MILLIS = 4_000L;
+    private static final long FIRST_EFFECT_MILLIS = 500L;
+    private static final long EFFECT_INTERVAL_MILLIS = 1_000L;
+    private static final long CONTINUE_GRACE_MILLIS = 150L;
     private static final Map<UUID, Session> ACTIVE_SESSIONS = new ConcurrentHashMap<>();
 
     private WashingTableManager() {
@@ -34,7 +37,19 @@ public final class WashingTableManager {
             return;
         }
 
-        ACTIVE_SESSIONS.put(player.getUUID(), new Session(pos.immutable(), player.serverLevel().getGameTime()));
+        Session current = ACTIVE_SESSIONS.get(player.getUUID());
+        if (current != null && current.pos().equals(pos)) {
+            if (System.currentTimeMillis() - current.startTimeMillis() >= REQUIRED_HOLD_MILLIS - CONTINUE_GRACE_MILLIS) {
+                ServerLevel world = player.serverLevel();
+                completeWash(player, world, pos);
+                ACTIVE_SESSIONS.remove(player.getUUID());
+                if (canWash(player, pos)) {
+                    ACTIVE_SESSIONS.put(player.getUUID(), new Session(pos.immutable(), System.currentTimeMillis(), -1L));
+                }
+            }
+            return;
+        }
+        ACTIVE_SESSIONS.put(player.getUUID(), new Session(pos.immutable(), System.currentTimeMillis(), -1L));
     }
 
     public static void stop(ServerPlayer player) {
@@ -58,11 +73,13 @@ public final class WashingTableManager {
             }
 
             ServerLevel world = player.serverLevel();
-            long elapsedTicks = world.getGameTime() - session.startTick();
-            if (elapsedTicks >= 10L && elapsedTicks < REQUIRED_HOLD_TICKS && elapsedTicks % 20L == 10L) {
+            long elapsedMillis = System.currentTimeMillis() - session.startTimeMillis();
+            if (elapsedMillis >= FIRST_EFFECT_MILLIS && elapsedMillis < REQUIRED_HOLD_MILLIS
+                    && elapsedMillis / EFFECT_INTERVAL_MILLIS > session.lastEffectSecond()) {
                 spawnWashEffects(world, session.pos());
+                entry.setValue(new Session(session.pos(), session.startTimeMillis(), elapsedMillis / EFFECT_INTERVAL_MILLIS));
             }
-            if (elapsedTicks < REQUIRED_HOLD_TICKS) {
+            if (elapsedMillis < REQUIRED_HOLD_MILLIS) {
                 continue;
             }
 
@@ -181,6 +198,6 @@ public final class WashingTableManager {
         return new Vec3(pos.getX() + rotatedX, pos.getY(), pos.getZ() + rotatedZ);
     }
 
-    private record Session(BlockPos pos, long startTick) {
+    private record Session(BlockPos pos, long startTimeMillis, long lastEffectSecond) {
     }
 }

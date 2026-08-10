@@ -190,6 +190,11 @@ public class OrderMachineScreenHandler extends ScreenHandler {
                         nbt.putInt(ModConstants.NBT_ORDER_TYPE, 0);
                     }
                     DataCompat.set(stack, nbt);
+                    if (player.getWorld() instanceof ServerWorld lifecycleWorld) {
+                        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.ACCEPTED,
+                                lifecycleWorld, player, stack);
+                    }
                     boolean delivery = nbt.getBoolean("Delivery");
                     String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
                     if (!delivery && player.getWorld() instanceof ServerWorld sw) {

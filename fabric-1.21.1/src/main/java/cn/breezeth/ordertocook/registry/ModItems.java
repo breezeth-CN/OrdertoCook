@@ -3,6 +3,7 @@ package cn.breezeth.ordertocook.registry;
 import cn.breezeth.ordertocook.core.ModConstants;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -11,6 +12,8 @@ import cn.breezeth.ordertocook.item.ChefCoinItem;
 import cn.breezeth.ordertocook.item.FoodPlateItem;
 import cn.breezeth.ordertocook.item.MotorcycleItem;
 import cn.breezeth.ordertocook.item.OrderItem;
+import cn.breezeth.ordertocook.item.OtcUpgradeBoxItem;
+import cn.breezeth.ordertocook.item.PrefilledShelfBlockItem;
 import cn.breezeth.ordertocook.item.TakeoutBagItem;
 
 public class ModItems {
@@ -26,14 +29,38 @@ public class ModItems {
     public static final Item WASHINGTABLE = registerItem("washingtable",
             new BlockItem(ModBlocks.WASHINGTABLE, new Item.Settings()));
 
+    public static final Item DISHWASHER = registerItem("dishwasher",
+            new BlockItem(ModBlocks.DISHWASHER, new Item.Settings()) {
+                @Override
+                public void appendTooltip(ItemStack stack, net.minecraft.item.Item.TooltipContext context, java.util.List<net.minecraft.text.Text> tooltip, net.minecraft.item.tooltip.TooltipType type) {
+                    tooltip.add(net.minecraft.text.Text.translatable("block.ordertocook.dishwasher.desc"));
+                }
+            });
+
+    public static final Item REFRIGERATOR = registerItem("refrigerator",
+            new BlockItem(ModBlocks.REFRIGERATOR, new Item.Settings()) {
+                @Override
+                public void appendTooltip(ItemStack stack, net.minecraft.item.Item.TooltipContext context, java.util.List<net.minecraft.text.Text> tooltip, net.minecraft.item.tooltip.TooltipType type) {
+                    tooltip.add(net.minecraft.text.Text.translatable("block.ordertocook.refrigerator.desc"));
+                }
+            });
+
+    public static final Item STOVE = registerItem("stove",
+            new BlockItem(ModBlocks.STOVE, new Item.Settings()) {
+                @Override
+                public void appendTooltip(ItemStack stack, net.minecraft.item.Item.TooltipContext context, java.util.List<net.minecraft.text.Text> tooltip, net.minecraft.item.tooltip.TooltipType type) {
+                    tooltip.add(net.minecraft.text.Text.translatable("block.ordertocook.stove.desc"));
+                }
+            });
+
     public static final Item CHAIR = registerItem("chair",
             new BlockItem(ModBlocks.CHAIR, new Item.Settings()));
 
     public static final Item SHELF = registerItem("shelf",
-            new BlockItem(ModBlocks.SHELF, new Item.Settings()));
+            new PrefilledShelfBlockItem(ModBlocks.SHELF, new Item.Settings(), PrefilledShelfBlockItem.PREFILL_PACKAGING));
 
     public static final Item PLATE_SHELF = registerItem("plate_shelf",
-            new BlockItem(ModBlocks.PLATE_SHELF, new Item.Settings()));
+            new PrefilledShelfBlockItem(ModBlocks.PLATE_SHELF, new Item.Settings(), PrefilledShelfBlockItem.PREFILL_PLATE));
 
     public static final Item BOARD = registerItem("board",
             new BlockItem(ModBlocks.BOARD, new Item.Settings()));
@@ -51,6 +78,9 @@ public class ModItems {
             new MotorcycleItem(new Item.Settings().maxCount(1)));
 
     public static final Item HELMET = registerItem("helmet", new Item(new Item.Settings()));
+
+    public static final Item OTC_UPGRADE_BOX = registerItem("otc_upgrade_box",
+            new OtcUpgradeBoxItem(new Item.Settings().maxCount(16)));
 
     // 订单 - 使用自定义 OrderItem
     public static final Item ORDER = registerItem("order", 

@@ -1,0 +1,45 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"neworder": {
+			"loop": "hold_on_last_frame",
+			"animation_length": 1,
+			"bones": {
+				"group": {
+					"position": {
+						"0.0": {
+							"vector": [0, -2, -0.75]
+						},
+						"1.0": {
+							"vector": [0, 7, 3]
+						}
+					}
+				},
+				"order": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, "math.sin(query.anim_time * 1000) * 5"]
+						},
+						"0.4167": {
+							"vector": [0, 0, 0]
+						}
+					},
+					"scale": {
+						"0.0": {
+							"vector": [0.95, 0.95, 0.95]
+						},
+						"0.125": {
+							"vector": [1.05, 1.05, 1.05]
+						},
+						"0.25": {
+							"vector": [0.95, 0.95, 0.95]
+						},
+						"0.375": {
+							"vector": [1, 1, 1]
+						}
+					}
+				}
+			}
+		}
+	}
+}

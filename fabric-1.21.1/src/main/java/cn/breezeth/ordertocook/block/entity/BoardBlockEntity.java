@@ -1,6 +1,6 @@
 package cn.breezeth.ordertocook.block.entity;
 
-import cn.breezeth.ordertocook.config.ConfigManager;
+import cn.breezeth.ordertocook.api.MenuFoodCompatApi;
 import cn.breezeth.ordertocook.registry.ModBlockEntities;
 import cn.breezeth.ordertocook.util.ImplementedInventory;
 import net.minecraft.block.BlockState;
@@ -202,12 +202,7 @@ public class BoardBlockEntity extends BlockEntity implements NamedScreenHandlerF
     }
 
     private int nutritionOf(ItemStack s) {
-        int custom = ConfigManager.getCustomMenuNutrition(s);
-        if (custom > 0) {
-            return custom;
-        }
-        FoodComponent fc = s.get(net.minecraft.component.DataComponentTypes.FOOD);
-        return (fc != null && fc.nutrition() > 0) ? fc.nutrition() : 0;
+        return MenuFoodCompatApi.resolve(s, MenuFoodCompatApi.Purpose.MENU).nutrition();
     }
 
     private String idOf(ItemStack s) {

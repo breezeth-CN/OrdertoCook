@@ -70,6 +70,8 @@ public class OrderGenerator {
 
         DataCompat.set(order, nbt);
         setOrderName(order, customer, type, delivery, urgent, isLongDistance);
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.GENERATED, world, null, order);
         
         return order;
     }
@@ -127,6 +129,8 @@ public class OrderGenerator {
 
         DataCompat.set(order, nbt);
         setOrderName(order, customer, type, delivery, urgent, isLongDistance);
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.GENERATED, world, null, order);
 
         return order;
     }
@@ -190,24 +194,27 @@ public class OrderGenerator {
         int attempts = ModConstants.DELIVERY_POSITION_ATTEMPTS;
         int targetX = pos.getX();
         int targetZ = pos.getZ();
+        int fallbackX = targetX;
+        int fallbackZ = targetZ;
 
         try {
             for (int i = 0; i < attempts; i++) {
-                int signX = random.nextBoolean() ? 1 : -1;
-                int signZ = random.nextBoolean() ? 1 : -1;
-                int offsetX = signX * (minDistance + random.nextInt(range + 1));
-                int offsetZ = signZ * (minDistance + random.nextInt(range + 1));
+                double radius = minDistance + random.nextDouble() * range;
+                double angle = random.nextDouble() * Math.PI * 2.0D;
+                int offsetX = (int) Math.round(Math.cos(angle) * radius);
+                int offsetZ = (int) Math.round(Math.sin(angle) * radius);
                 int candX = pos.getX() + offsetX;
                 int candZ = pos.getZ() + offsetZ;
-                int topY = world.getTopY(Heightmap.Type.WORLD_SURFACE, candX, candZ);
-                BlockPos top = new BlockPos(candX, topY, candZ);
-                RegistryEntry<Biome> biomeEntry = world.getBiome(top);
-                boolean badBiome = biomeEntry.getKey().map(k -> {
+                BlockPos candidate = new BlockPos(candX, pos.getY(), candZ);
+                if (!world.getWorldBorder().contains(candidate)) continue;
+                fallbackX = candX;
+                fallbackZ = candZ;
+                RegistryEntry<Biome> biomeEntry = sampleNoiseBiome(world, candX, candZ);
+                boolean badBiome = biomeEntry != null && biomeEntry.getKey().map(k -> {
                     String path = k.getValue().getPath();
                     return path.contains("ocean") || path.contains("river");
                 }).orElse(false);
-                boolean inWater = !world.getBlockState(top).getFluidState().isEmpty();
-                if (!badBiome && !inWater) {
+                if (!badBiome) {
                     targetX = candX;
                     targetZ = candZ;
                     break;
@@ -215,6 +222,10 @@ public class OrderGenerator {
             }
         } catch (Throwable t) {
             OrderToCookMod.LOGGER.warn("Delivery position generation failed, fallback to machine pos", t);
+        }
+        if (targetX == pos.getX() && targetZ == pos.getZ()) {
+            targetX = fallbackX;
+            targetZ = fallbackZ;
         }
 
         deliveryPosNbt.putInt(ModConstants.NBT_X, targetX);
@@ -224,6 +235,20 @@ public class OrderGenerator {
         int dz = targetZ - pos.getZ();
         int dist = (int) Math.round(Math.sqrt(dx * dx + dz * dz));
         nbt.putInt(ModConstants.NBT_DELIVERY_DIST, dist);
+    }
+
+    private static RegistryEntry<Biome> sampleNoiseBiome(ServerWorld world, int blockX, int blockZ) {
+        try {
+            var chunks = world.getChunkManager();
+            int sampleY = chunks.getChunkGenerator().getSeaLevel();
+            return chunks.getChunkGenerator().getBiomeSource().getBiome(
+                    net.minecraft.world.biome.source.BiomeCoords.fromBlock(blockX),
+                    net.minecraft.world.biome.source.BiomeCoords.fromBlock(sampleY),
+                    net.minecraft.world.biome.source.BiomeCoords.fromBlock(blockZ),
+                    chunks.getNoiseConfig().getMultiNoiseSampler());
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     private static void generateFoodList(net.minecraft.util.math.random.Random random, int type, NbtCompound nbt, List<Item> menuFoods) {
@@ -313,11 +338,8 @@ public class OrderGenerator {
             Identifier id = Identifier.tryParse(key);
             if (id == null || !Registries.ITEM.containsId(id)) continue;
             Item item = Registries.ITEM.get(id);
-            int nutrition = ConfigManager.getCustomMenuNutrition(item);
-            if (nutrition <= 0) {
-                var fc = item.getFoodComponent();
-                nutrition = (fc != null) ? fc.getHunger() : 0;
-            }
+            int nutrition = cn.breezeth.ordertocook.api.MenuFoodCompatApi.resolve(
+                    new ItemStack(item), cn.breezeth.ordertocook.api.MenuFoodCompatApi.Purpose.REWARD).nutrition();
             if (nutrition > 0) {
                 sum += nutrition * foodList.getInt(key);
             }

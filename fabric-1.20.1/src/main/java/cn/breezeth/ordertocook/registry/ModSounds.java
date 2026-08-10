@@ -15,17 +15,32 @@ public class ModSounds {
     public static final SoundEvent FOOD_PLATE_PLACE = SoundEvent.of(FOOD_PLATE_PLACE_ID);
     public static final Identifier PLATE_PLACE_ID = new Identifier(ModConstants.MOD_ID, "plate_place");
     public static final SoundEvent PLATE_PLACE = SoundEvent.of(PLATE_PLACE_ID);
+    public static final Identifier BAG_PLACE_ID = new Identifier(ModConstants.MOD_ID, "bag_place");
+    public static final SoundEvent BAG_PLACE = SoundEvent.of(BAG_PLACE_ID);
     public static final Identifier WASHING_PLATE_ID = new Identifier(ModConstants.MOD_ID, "washing_plate");
     public static final SoundEvent WASHING_PLATE = SoundEvent.of(WASHING_PLATE_ID);
     public static final Identifier HORN_ID = new Identifier(ModConstants.MOD_ID, "horn");
     public static final SoundEvent HORN = SoundEvent.of(HORN_ID);
+    public static final Identifier DISHWASHER_IN_ID = new Identifier(ModConstants.MOD_ID, "dishwasher_in");
+    public static final SoundEvent DISHWASHER_IN = SoundEvent.of(DISHWASHER_IN_ID);
+    public static final Identifier DISHWASHER_OUT_ID = new Identifier(ModConstants.MOD_ID, "dishwasher_out");
+    public static final SoundEvent DISHWASHER_OUT = SoundEvent.of(DISHWASHER_OUT_ID);
+    public static final Identifier DISHWASHER_CLEAR_OUT_ID = new Identifier(ModConstants.MOD_ID, "dishwasher_clear_out");
+    public static final SoundEvent DISHWASHER_CLEAR_OUT = SoundEvent.of(DISHWASHER_CLEAR_OUT_ID);
+    public static final Identifier DISHWASHER_WASHING_ID = new Identifier(ModConstants.MOD_ID, "dishwasher_washing");
+    public static final SoundEvent DISHWASHER_WASHING = SoundEvent.of(DISHWASHER_WASHING_ID);
 
     public static void registerSounds() {
         Registry.register(Registries.SOUND_EVENT, PRESTIGE_GET_ID, PRESTIGE_GET);
         Registry.register(Registries.SOUND_EVENT, ORDER_REFRESH_ID, ORDER_REFRESH);
         Registry.register(Registries.SOUND_EVENT, FOOD_PLATE_PLACE_ID, FOOD_PLATE_PLACE);
         Registry.register(Registries.SOUND_EVENT, PLATE_PLACE_ID, PLATE_PLACE);
+        Registry.register(Registries.SOUND_EVENT, BAG_PLACE_ID, BAG_PLACE);
         Registry.register(Registries.SOUND_EVENT, WASHING_PLATE_ID, WASHING_PLATE);
         Registry.register(Registries.SOUND_EVENT, HORN_ID, HORN);
+        Registry.register(Registries.SOUND_EVENT, DISHWASHER_IN_ID, DISHWASHER_IN);
+        Registry.register(Registries.SOUND_EVENT, DISHWASHER_OUT_ID, DISHWASHER_OUT);
+        Registry.register(Registries.SOUND_EVENT, DISHWASHER_CLEAR_OUT_ID, DISHWASHER_CLEAR_OUT);
+        Registry.register(Registries.SOUND_EVENT, DISHWASHER_WASHING_ID, DISHWASHER_WASHING);
     }
 }

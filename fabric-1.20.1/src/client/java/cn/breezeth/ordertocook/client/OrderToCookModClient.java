@@ -67,6 +67,7 @@ public class OrderToCookModClient implements ClientModInitializer {
         new OrderToCookClient().onInitializeClient();
 
         EntityRendererRegistry.register(ModEntities.SEAT, SeatEntityRenderer::new);
+        EntityRendererRegistry.register(ModEntities.CUSTOMER_SEAT, SeatEntityRenderer::new);
         EntityRendererRegistry.register(ModEntities.CUSTOMER, CustomerEntityRenderer::new);
 
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.TAKEOUT_BAG, RenderLayer.getCutout());

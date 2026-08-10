@@ -41,11 +41,14 @@ import cn.breezeth.ordertocook.item.TakeoutBagItem;
 import cn.breezeth.ordertocook.entity.SeatEntity;
 import cn.breezeth.ordertocook.vehicle.motorcycle.MotorcycleEntity;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
+import net.minecraftforge.event.entity.EntityMountEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -80,7 +83,23 @@ public class OrderToCookMod {
         MinecraftForge.EVENT_BUS.addListener(this::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, EntityMountEvent.class, this::onManagedMaidMount);
 	}
+
+    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ModNetworking.sendCustomMenuSync(player);
+        }
+    }
+
+    private void onManagedMaidMount(EntityMountEvent event) {
+        if (!event.isMounting() || !event.getEntityMounting().level().isClientSide) return;
+        if (event.getEntityBeingMounted().getType() != ModEntities.CUSTOMER_SEAT.get()) return;
+        if (!cn.breezeth.ordertocook.compat.TouhouLittleMaidCustomerCompat.isTouhouMaid(
+                event.getEntityMounting() instanceof LivingEntity living ? living : null)) return;
+        event.setCanceled(false);
+    }
 
     private void registerAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.CUSTOMER.get(), CustomerEntity.createCustomerAttributes().build());
@@ -102,6 +121,9 @@ public class OrderToCookMod {
         }
         if (result == InteractionResult.PASS) {
             result = handleWalkInNpc(player, world, hand, entity);
+        }
+        if (result == InteractionResult.PASS && OrderNpcManager.isManagedTouhouMaid(entity)) {
+            result = InteractionResult.sidedSuccess(world.isClientSide);
         }
         if (result != InteractionResult.PASS) {
             event.setCancellationResult(result);
@@ -276,7 +298,9 @@ public class OrderToCookMod {
                 }
                 DataCompat.set(order, nbt);
                 String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
-                OrderNpcManager.tagNpc(player, orderId, npc);
+                long expiryTick = nbt.contains(ModConstants.NBT_EXPIRY_TICK) ? nbt.getLong(ModConstants.NBT_EXPIRY_TICK) : -1L;
+                long expirySys = nbt.contains(ModConstants.NBT_EXPIRY_TIME) ? nbt.getLong(ModConstants.NBT_EXPIRY_TIME) : -1L;
+                OrderNpcManager.tagNpc(player, orderId, expiryTick, expirySys, npc);
             }
             
             // Change outline color
@@ -295,7 +319,9 @@ public class OrderToCookMod {
         // Walk-in NPC Despawn Tick
     private void onLevelTick(TickEvent.LevelTickEvent event) {
             if (event.phase != TickEvent.Phase.END || !(event.level instanceof ServerLevel world)) return;
+            cn.breezeth.ordertocook.core.OrderNpcManager.tickCompletionAnimations(world);
             if (world.getGameTime() % 100 == 0) {
+                cn.breezeth.ordertocook.core.OrderNpcManager.migrateLegacyCustomerSeats(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.checkDespawn(world);
                 cn.breezeth.ordertocook.core.OrderNpcManager.checkOrderNpcDespawn(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.cleanupChairSeats(world);

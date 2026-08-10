@@ -27,7 +27,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class ModNetworking {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     private static int nextPacketId = 0;
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
@@ -89,6 +89,8 @@ public final class ModNetworking {
         public String name() { return name; }
         public String owner() { return owner; }
     }
+
+    public record CustomMenuSyncS2CPayload(String json) {}
 
     public static final class VanillaEraFaresChronRequirementsQueryC2SPayload {
         public static final VanillaEraFaresChronRequirementsQueryC2SPayload INSTANCE = new VanillaEraFaresChronRequirementsQueryC2SPayload();
@@ -171,6 +173,8 @@ public final class ModNetworking {
         });
         registerClient(RestaurantNameS2CPayload.class, (msg, buf) -> { buf.writeUtf(msg.name(), 128); buf.writeUtf(msg.owner(), 64); },
                 buf -> new RestaurantNameS2CPayload(buf.readUtf(128), buf.readUtf(64)), ModNetworkingClientBridge::handleRestaurantName);
+        registerClient(CustomMenuSyncS2CPayload.class, (msg, buf) -> buf.writeUtf(msg.json(), 32767),
+                buf -> new CustomMenuSyncS2CPayload(buf.readUtf(32767)), ModNetworkingClientBridge::handleCustomMenuSync);
 
         registerServer(VanillaEraFaresChronRequirementsQueryC2SPayload.class, (msg, buf) -> {}, buf -> VanillaEraFaresChronRequirementsQueryC2SPayload.INSTANCE, (msg, player) ->
                 sendToPlayer(player, new VanillaEraFaresChronRequirementsS2CPayload(buildVanillaEraFaresChronRequirementsJson())));
@@ -203,6 +207,17 @@ public final class ModNetworking {
 
     public static void sendToPlayer(ServerPlayer player, Object payload) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), payload);
+    }
+
+    public static void sendCustomMenuSync(ServerPlayer player) {
+        sendToPlayer(player, new CustomMenuSyncS2CPayload(
+                cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()));
+    }
+
+    public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendCustomMenuSync(player);
+        }
     }
 
     private static <T> void registerServer(Class<T> type, BiConsumer<T, FriendlyByteBuf> encoder, Function<FriendlyByteBuf, T> decoder, BiConsumer<T, ServerPlayer> handler) {

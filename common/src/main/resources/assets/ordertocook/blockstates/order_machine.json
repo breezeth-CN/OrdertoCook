@@ -1,28 +1,48 @@
 {
-  "multipart": [
-    { "when": { "facing": "north" }, "apply": { "model": "ordertocook:block/order_machine_idle" } },
-    { "when": { "facing": "east" },  "apply": { "model": "ordertocook:block/order_machine_idle", "y": 90 } },
-    { "when": { "facing": "south" }, "apply": { "model": "ordertocook:block/order_machine_idle", "y": 180 } },
-    { "when": { "facing": "west" },  "apply": { "model": "ordertocook:block/order_machine_idle", "y": 270 } },
+  "variants": {
+    "facing=north,mode=idle,frame=0": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=idle,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=idle,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=idle,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
 
-    { "when": { "facing": "north", "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0" } },
-    { "when": { "facing": "east",  "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 90 } },
-    { "when": { "facing": "south", "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 180 } },
-    { "when": { "facing": "west",  "mode": "printing", "frame": 0 }, "apply": { "model": "ordertocook:block/order_machine_paper0", "y": 270 } },
+    "facing=north,mode=idle,frame=1": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=idle,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=idle,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=idle,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
 
-    { "when": { "facing": "north", "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1" } },
-    { "when": { "facing": "east",  "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 90 } },
-    { "when": { "facing": "south", "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 180 } },
-    { "when": { "facing": "west",  "mode": "printing", "frame": 1 }, "apply": { "model": "ordertocook:block/order_machine_paper1", "y": 270 } },
+    "facing=north,mode=idle,frame=2": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=idle,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=idle,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=idle,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
 
-    { "when": { "facing": "north", "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2" } },
-    { "when": { "facing": "east",  "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 90 } },
-    { "when": { "facing": "south", "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 180 } },
-    { "when": { "facing": "west",  "mode": "printing", "frame": 2 }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 270 } },
+    "facing=north,mode=printing,frame=0": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=printing,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=printing,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=printing,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
 
-    { "when": { "facing": "north", "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2" } },
-    { "when": { "facing": "east",  "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 90 } },
-    { "when": { "facing": "south", "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 180 } },
-    { "when": { "facing": "west",  "mode": "waiting" }, "apply": { "model": "ordertocook:block/order_machine_paper2", "y": 270 } }
-  ]
+    "facing=north,mode=printing,frame=1": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=printing,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=printing,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=printing,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
+
+    "facing=north,mode=printing,frame=2": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=printing,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=printing,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=printing,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
+
+    "facing=north,mode=waiting,frame=0": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=waiting,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=waiting,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=waiting,frame=0": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
+
+    "facing=north,mode=waiting,frame=1": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=waiting,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=waiting,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=waiting,frame=1": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 },
+
+    "facing=north,mode=waiting,frame=2": { "model": "ordertocook:block/empty_order_machine_geo" },
+    "facing=east,mode=waiting,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 90 },
+    "facing=south,mode=waiting,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 180 },
+    "facing=west,mode=waiting,frame=2": { "model": "ordertocook:block/empty_order_machine_geo", "y": 270 }
+  }
 }

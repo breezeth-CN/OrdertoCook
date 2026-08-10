@@ -2,10 +2,13 @@ package cn.breezeth.ordertocook.registry;
 
 import cn.breezeth.ordertocook.block.BoardBlock;
 import cn.breezeth.ordertocook.block.ChairBlock;
+import cn.breezeth.ordertocook.block.DishwasherBlock;
 import cn.breezeth.ordertocook.block.FoodPlateBlock;
 import cn.breezeth.ordertocook.block.OrderMachineBlock;
 import cn.breezeth.ordertocook.block.PlateShelfBlock;
+import cn.breezeth.ordertocook.block.RefrigeratorBlock;
 import cn.breezeth.ordertocook.block.ShelfBlock;
+import cn.breezeth.ordertocook.block.StoveBlock;
 import cn.breezeth.ordertocook.block.TakeoutBagBlock;
 import cn.breezeth.ordertocook.block.TakeoutBoxBlock;
 import cn.breezeth.ordertocook.block.WashingTableBlock;
@@ -44,6 +47,12 @@ public class ModBlocks {
             () -> new FoodPlateBlock(BlockBehaviour.Properties.copy(Blocks.WHITE_WOOL).noOcclusion()));
     public static final RegistryObject<Block> BOARD = BLOCKS.register("board",
             () -> new BoardBlock(BlockBehaviour.Properties.copy(Blocks.OAK_PLANKS).noOcclusion()));
+    public static final RegistryObject<Block> DISHWASHER = BLOCKS.register("dishwasher",
+            () -> new DishwasherBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion()));
+    public static final RegistryObject<Block> REFRIGERATOR = BLOCKS.register("refrigerator",
+            () -> new RefrigeratorBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion()));
+    public static final RegistryObject<Block> STOVE = BLOCKS.register("stove",
+            () -> new StoveBlock(BlockBehaviour.Properties.copy(Blocks.CRAFTING_TABLE).noOcclusion()));
 
     public static void registerModBlocks(IEventBus modBus) {
         BLOCKS.register(modBus);

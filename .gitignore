@@ -35,3 +35,11 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# build artifacts / local test outputs
+ordertocook-sable-neoforge-1.21.1/
+_disabled_runtime_artifacts_for_ordertocook_test/
+forge-1.20.1/libs/
+test-builds/
+exports/
+runtime-backups/

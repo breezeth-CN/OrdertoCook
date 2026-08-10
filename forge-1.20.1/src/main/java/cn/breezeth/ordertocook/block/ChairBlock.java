@@ -85,7 +85,7 @@ public class ChairBlock extends Block {    public static final DirectionProperty
         }
 
         SeatEntity seat = new SeatEntity(ModEntities.SEAT.get(), world);
-        seat.setPosRaw(pos.getX() + 0.5, pos.getY() + SEAT_HEIGHT_OFFSET, pos.getZ() + 0.5);
+        seat.setPos(pos.getX() + 0.5, pos.getY() + SEAT_HEIGHT_OFFSET, pos.getZ() + 0.5);
         seat.setInvisible(true);
         seat.setNoGravity(true);
         seat.setSilent(true);

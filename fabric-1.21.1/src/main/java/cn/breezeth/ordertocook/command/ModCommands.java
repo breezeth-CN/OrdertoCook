@@ -106,6 +106,7 @@ public final class ModCommands {
             return 0;
         }
         src.sendFeedback(() -> Text.literal("Added custom menu item: " + stack.getName().getString() + " (hunger=" + hunger + ")"), false);
+        cn.breezeth.ordertocook.network.ModNetworking.broadcastCustomMenuSync(src.getServer());
         return 1;
     }
 
@@ -132,6 +133,7 @@ public final class ModCommands {
         }
         final int addedFinal = added;
         src.sendFeedback(() -> Text.literal("Added/updated custom menu items from inventory: " + addedFinal + " entries (hunger=" + hunger + ")"), false);
+        cn.breezeth.ordertocook.network.ModNetworking.broadcastCustomMenuSync(src.getServer());
         return added;
     }
 

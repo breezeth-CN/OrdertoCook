@@ -7,7 +7,13 @@ import cn.breezeth.ordertocook.client.animation.RideOrientationLock;
 import cn.breezeth.ordertocook.client.animation.RidePerspectiveSwitch;
 import cn.breezeth.ordertocook.client.gecko.RiderRenderBridge;
 import cn.breezeth.ordertocook.client.renderer.CustomerEntityRenderer;
+import cn.breezeth.ordertocook.client.renderer.DishwasherRenderer;
+import cn.breezeth.ordertocook.client.renderer.FoodPlatePlacedRenderer;
+import cn.breezeth.ordertocook.client.renderer.OrderMachineRenderer;
+import cn.breezeth.ordertocook.client.renderer.RefrigeratorRenderer;
 import cn.breezeth.ordertocook.client.renderer.SeatEntityRenderer;
+import cn.breezeth.ordertocook.client.renderer.StoveRenderer;
+import cn.breezeth.ordertocook.client.renderer.TakeoutBagPlacedRenderer;
 import cn.breezeth.ordertocook.client.renderer.WashingTableWaterRenderer;
 import cn.breezeth.ordertocook.client.render.feature.HelmetFeatureRenderer;
 import cn.breezeth.ordertocook.core.ModConstants;
@@ -20,9 +26,12 @@ import cn.breezeth.ordertocook.network.ModNetworking;
 import cn.breezeth.ordertocook.registry.ModBlockEntities;
 import cn.breezeth.ordertocook.registry.ModBlocks;
 import cn.breezeth.ordertocook.registry.ModEntities;
+import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.registry.ModScreenHandlers;
 import cn.breezeth.ordertocook.screen.BoardScreen;
 import cn.breezeth.ordertocook.screen.OrderMachineScreen;
+import cn.breezeth.ordertocook.screen.RefrigeratorScreen;
+import cn.breezeth.ordertocook.screen.StoveScreen;
 import cn.breezeth.ordertocook.screen.TakeoutBoxScreen;
 import cn.breezeth.ordertocook.vehicle.motorcycle.MotorcycleEntity;
 import com.mojang.brigadier.arguments.ArgumentType;
@@ -80,7 +89,9 @@ public final class OrderToCookModClient {
     private static int pendingLightToggleTicks = -1;
     private static float pendingLightTogglePitch = 1.0f;
     private static BlockPos activeWashPos = null;
-    private static long activeWashStartAge = -1L;
+    private static BlockPos activeDishwasherPreviewPos = null;
+    private static long activeWashStartMillis = -1L;
+    private static final long WASH_CONTINUE_MILLIS = 4_000L;
     private static boolean washBlockedUntilRelease = false;
     private static boolean uiControlEnabled = false;
 
@@ -108,22 +119,39 @@ public final class OrderToCookModClient {
                 Objects.requireNonNull(ModScreenHandlers.COUNTERTOP_SCREEN_HANDLER.get());
         MenuType<? extends cn.breezeth.ordertocook.screen.BoardScreenHandler> board =
                 Objects.requireNonNull(ModScreenHandlers.BOARD_SCREEN_HANDLER.get());
+        MenuType<? extends cn.breezeth.ordertocook.screen.RefrigeratorScreenHandler> refrigeratorUpper =
+                Objects.requireNonNull(ModScreenHandlers.REFRIGERATOR_UPPER.get());
+        MenuType<? extends cn.breezeth.ordertocook.screen.RefrigeratorScreenHandler> refrigeratorLower =
+                Objects.requireNonNull(ModScreenHandlers.REFRIGERATOR_LOWER.get());
+        MenuType<? extends cn.breezeth.ordertocook.screen.StoveScreenHandler> stove =
+                Objects.requireNonNull(ModScreenHandlers.STOVE.get());
         event.register(orderMachine, OrderMachineScreen::new);
         event.register(countertop, TakeoutBoxScreen::new);
         event.register(board, BoardScreen::new);
+        event.register(refrigeratorUpper, RefrigeratorScreen::new);
+        event.register(refrigeratorLower, RefrigeratorScreen::new);
+        event.register(stove, StoveScreen::new);
     }
 
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         EntityType<? extends MotorcycleEntity> motorcycle = Objects.requireNonNull(ModEntities.MOTORCYCLE.get());
         EntityType<? extends SeatEntity> seat = Objects.requireNonNull(ModEntities.SEAT.get());
+        EntityType<? extends SeatEntity> customerSeat = Objects.requireNonNull(ModEntities.CUSTOMER_SEAT.get());
         EntityType<? extends CustomerEntity> customer = Objects.requireNonNull(ModEntities.CUSTOMER.get());
         BlockEntityType<? extends WashingTableBlockEntity> washingTable =
                 Objects.requireNonNull(ModBlockEntities.WASHING_TABLE.get());
         event.registerEntityRenderer(motorcycle, MotorcycleRenderer::new);
         event.registerEntityRenderer(seat, SeatEntityRenderer::new);
+        event.registerEntityRenderer(customerSeat, SeatEntityRenderer::new);
         event.registerEntityRenderer(customer, CustomerEntityRenderer::new);
         event.registerBlockEntityRenderer(washingTable, WashingTableWaterRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.DISHWASHER.get(), ctx -> new DishwasherRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.REFRIGERATOR.get(), ctx -> new RefrigeratorRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.STOVE.get(), ctx -> new StoveRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.ORDER_MACHINE.get(), ctx -> new OrderMachineRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.FOOD_PLATE_DISPLAY.get(), ctx -> new FoodPlatePlacedRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.TAKEOUT_BAG.get(), ctx -> new TakeoutBagPlacedRenderer());
     }
 
     @SubscribeEvent
@@ -204,15 +232,18 @@ public final class OrderToCookModClient {
         LocalPlayer player = client.player;
         if (player == null || client.options == null) {
             stopWashing(client, true);
+            clearDishwasherPreview(client);
             resetRidingClientState();
             return;
         }
         if (client.screen != null) {
             stopWashing(client, true);
+            clearDishwasherPreview(client);
             return;
         }
 
         processWashingInput(client);
+        processDishwasherPreview(client);
 
         MotorcycleEntity motorcycle = MotorcycleEntity.fromVehicle(player.getVehicle());
         boolean chairSeat = isChairSeat(player);
@@ -332,6 +363,49 @@ public final class OrderToCookModClient {
         return motorcycle.getDeltaMovement().dot(forwardVec) < -0.01;
     }
 
+    private static void processDishwasherPreview(Minecraft client) {
+        BlockPos previewPos = findDishwasherPreviewTarget(client);
+        if (activeDishwasherPreviewPos != null && !activeDishwasherPreviewPos.equals(previewPos)) {
+            setDishwasherPreview(client, activeDishwasherPreviewPos, false);
+            activeDishwasherPreviewPos = null;
+        }
+        if (previewPos != null && !previewPos.equals(activeDishwasherPreviewPos)) {
+            setDishwasherPreview(client, previewPos, true);
+            activeDishwasherPreviewPos = previewPos;
+        }
+    }
+
+    private static BlockPos findDishwasherPreviewTarget(Minecraft client) {
+        if (client.player == null || client.level == null || client.hitResult == null || client.hitResult.getType() != HitResult.Type.BLOCK) {
+            return null;
+        }
+        if (!client.player.getMainHandItem().is(ModItems.DIRTY_PLATE.get()) && !client.player.getOffhandItem().is(ModItems.DIRTY_PLATE.get())) {
+            return null;
+        }
+        BlockHitResult hitResult = (BlockHitResult) client.hitResult;
+        BlockPos pos = Objects.requireNonNull(hitResult.getBlockPos());
+        if (client.level.getBlockState(pos).getBlock() != ModBlocks.DISHWASHER.get()) {
+            return null;
+        }
+        if (client.level.getBlockEntity(pos) instanceof cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity dishwasher && dishwasher.isIdleForPreview()) {
+            return pos;
+        }
+        return null;
+    }
+
+    private static void setDishwasherPreview(Minecraft client, BlockPos pos, boolean open) {
+        if (client.level != null && client.level.getBlockEntity(pos) instanceof cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity dishwasher) {
+            dishwasher.setClientPreviewOpen(open);
+        }
+    }
+
+    private static void clearDishwasherPreview(Minecraft client) {
+        if (activeDishwasherPreviewPos != null) {
+            setDishwasherPreview(client, activeDishwasherPreviewPos, false);
+            activeDishwasherPreviewPos = null;
+        }
+    }
+
     private static void processWashingInput(Minecraft client) {
         LocalPlayer player = client.player;
         if (player == null || client.options == null) {
@@ -350,7 +424,7 @@ public final class OrderToCookModClient {
         }
 
         if (activeWashPos != null) {
-            if (player.tickCount - activeWashStartAge >= 80L) {
+            if (System.currentTimeMillis() - activeWashStartMillis >= WASH_CONTINUE_MILLIS) {
                 BlockPos washPos = activeWashPos;
                 if (canContinueWashing(client, washPos)) {
                     beginWashing(player, washPos);
@@ -377,7 +451,7 @@ public final class OrderToCookModClient {
 
     private static void beginWashing(LocalPlayer player, BlockPos washPos) {
         activeWashPos = washPos;
-        activeWashStartAge = player.tickCount;
+        activeWashStartMillis = System.currentTimeMillis();
         RiderRenderBridge.triggerWashStart(player);
         ModClientNetworking.sendRiderAnimation(ModNetworking.RIDER_ANIM_WASH_START, true);
         sendToServer(new ModNetworking.StartWashingPayload(Objects.requireNonNull(washPos)));
@@ -430,7 +504,7 @@ public final class OrderToCookModClient {
     private static void stopWashing(Minecraft client, boolean notifyServer) {
         if (activeWashPos == null || client.player == null) {
             activeWashPos = null;
-            activeWashStartAge = -1L;
+            activeWashStartMillis = -1L;
             return;
         }
         if (notifyServer) {
@@ -439,7 +513,7 @@ public final class OrderToCookModClient {
         RiderRenderBridge.triggerWashStop(client.player);
         ModClientNetworking.sendRiderAnimation(ModNetworking.RIDER_ANIM_WASH_STOP, false);
         activeWashPos = null;
-        activeWashStartAge = -1L;
+        activeWashStartMillis = -1L;
     }
 
     private static void resetRidingClientState() {
@@ -450,8 +524,9 @@ public final class OrderToCookModClient {
         pendingLightToggleTicks = -1;
         pendingLightTogglePitch = 1.0f;
         activeWashPos = null;
-        activeWashStartAge = -1L;
+        activeWashStartMillis = -1L;
         washBlockedUntilRelease = false;
+        activeDishwasherPreviewPos = null;
     }
 
     private static ResourceLocation id(String path) {

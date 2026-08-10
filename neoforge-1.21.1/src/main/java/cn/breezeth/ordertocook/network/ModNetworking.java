@@ -114,6 +114,16 @@ public final class ModNetworking {
         public CustomPacketPayload.Type<? extends CustomPacketPayload> type() { return ID; }
     }
 
+    public record CustomMenuSyncS2CPayload(String json) implements CustomPacketPayload {
+        public static final CustomPacketPayload.Type<CustomMenuSyncS2CPayload> ID =
+                new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(ModConstants.MOD_ID, "custom_menu_sync_s2c"));
+        public static final StreamCodec<FriendlyByteBuf, CustomMenuSyncS2CPayload> CODEC =
+                StreamCodec.ofMember((payload, buf) -> buf.writeUtf(payload.json(), 32767),
+                        buf -> new CustomMenuSyncS2CPayload(buf.readUtf(32767)));
+        @Override
+        public CustomPacketPayload.Type<? extends CustomPacketPayload> type() { return ID; }
+    }
+
     public static final class ToggleMotorcycleLightPayload implements CustomPacketPayload {
         public static final CustomPacketPayload.Type<ToggleMotorcycleLightPayload> ID =
                 new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(ModConstants.MOD_ID, "toggle_motorcycle_light"));
@@ -221,7 +231,7 @@ public final class ModNetworking {
     }
 
     public static void registerPayloadHandlers(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1");
+        PayloadRegistrar registrar = event.registrar("2");
         registrar.playToServer(PrestigeQueryC2SPayload.ID, PrestigeQueryC2SPayload.CODEC, (payload, context) -> {
             ServerPlayer player = (ServerPlayer) context.player();
             int prestige = PrestigeManager.getPlayerPrestige(player);
@@ -319,6 +329,7 @@ public final class ModNetworking {
             PacketDistributor.sendToPlayer(player, new RestaurantNameS2CPayload(name, owner));
         });
         registrar.playToClient(RestaurantNameS2CPayload.ID, RestaurantNameS2CPayload.CODEC, ModNetworkingClientBridge::handleRestaurantName);
+        registrar.playToClient(CustomMenuSyncS2CPayload.ID, CustomMenuSyncS2CPayload.CODEC, ModNetworkingClientBridge::handleCustomMenuSync);
 
         registrar.playToServer(ToggleMotorcycleLightPayload.ID, ToggleMotorcycleLightPayload.CODEC, (payload, context) -> {
             ServerPlayer player = (ServerPlayer) context.player();
@@ -407,5 +418,16 @@ public final class ModNetworking {
             }
         });
         registrar.playToClient(RiderAnimS2CPayload.ID, RiderAnimS2CPayload.CODEC, ModNetworkingClientBridge::handleRiderAnim);
+    }
+
+    public static void sendCustomMenuSync(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new CustomMenuSyncS2CPayload(
+                cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()));
+    }
+
+    public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendCustomMenuSync(player);
+        }
     }
 }

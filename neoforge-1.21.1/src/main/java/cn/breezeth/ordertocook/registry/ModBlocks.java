@@ -2,10 +2,13 @@ package cn.breezeth.ordertocook.registry;
 
 import cn.breezeth.ordertocook.block.BoardBlock;
 import cn.breezeth.ordertocook.block.ChairBlock;
+import cn.breezeth.ordertocook.block.DishwasherBlock;
 import cn.breezeth.ordertocook.block.FoodPlateBlock;
 import cn.breezeth.ordertocook.block.OrderMachineBlock;
 import cn.breezeth.ordertocook.block.PlateShelfBlock;
+import cn.breezeth.ordertocook.block.RefrigeratorBlock;
 import cn.breezeth.ordertocook.block.ShelfBlock;
+import cn.breezeth.ordertocook.block.StoveBlock;
 import cn.breezeth.ordertocook.block.TakeoutBagBlock;
 import cn.breezeth.ordertocook.block.TakeoutBoxBlock;
 import cn.breezeth.ordertocook.block.WashingTableBlock;
@@ -39,6 +42,12 @@ public class ModBlocks {
             () -> new FoodPlateBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHITE_WOOL).noOcclusion()));
     public static final DeferredHolder<Block, Block> BOARD = BLOCKS.register("board",
             () -> new BoardBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).noOcclusion()));
+    public static final DeferredHolder<Block, Block> DISHWASHER = BLOCKS.register("dishwasher",
+            () -> new DishwasherBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion()));
+    public static final DeferredHolder<Block, Block> REFRIGERATOR = BLOCKS.register("refrigerator",
+            () -> new RefrigeratorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion().requiresCorrectToolForDrops().strength(3.0F)));
+    public static final DeferredHolder<Block, Block> STOVE = BLOCKS.register("stove",
+            () -> new StoveBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.CRAFTING_TABLE).noOcclusion().requiresCorrectToolForDrops().strength(3.0F)));
 
     public static void registerModBlocks(IEventBus modBus) {
         BLOCKS.register(modBus);

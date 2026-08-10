@@ -19,7 +19,12 @@ import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,9 +42,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 
-public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider, ImplementedInventory {
+public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider, ImplementedInventory, GeoBlockEntity {
     private final NonNullList<ItemStack> inventory = NonNullList.withSize(5, ItemStack.EMPTY);
     
     private int progress = 0;
@@ -68,6 +80,8 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     private int machineId = 0;
     private boolean isPlaced = true;
     private transient boolean oc$registeredPlacedSynced = false;
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private String lastRenderAnimation = "";
 
     protected final ContainerData propertyDelegate;
     private int effectiveBenefitLevel = 0;
@@ -277,15 +291,33 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     }
 
     private void refreshOrders() {
+        long generationStartedNanos = System.nanoTime();
         inventory.clear();
         int slots = getUnlockedSlots(restaurantLevel);
+        int deliveryOrders = 0;
+        int longDistanceOrders = 0;
         if (this.level instanceof ServerLevel sw) {
             List<Item> menuFoods = getMenuFoodsForMachine(sw, this.worldPosition);
             for (int i = 0; i < slots; i++) {
-                inventory.set(i, OrderGenerator.generateRandomOrder(sw, this.worldPosition, restaurantLevel, menuFoods));
+                ItemStack generated = OrderGenerator.generateRandomOrder(sw, this.worldPosition, restaurantLevel, menuFoods);
+                inventory.set(i, generated);
+                CompoundTag generatedNbt = DataCompat.copy(generated);
+                if (generatedNbt != null && generatedNbt.getBoolean(ModConstants.NBT_DELIVERY)) {
+                    deliveryOrders++;
+                    if (generatedNbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE)) longDistanceOrders++;
+                }
+            }
+            if (ConfigManager.isDevModeEnabled()) {
+                double elapsedMs = (System.nanoTime() - generationStartedNanos) / 1_000_000.0D;
+                Component message = Component.literal(String.format(java.util.Locale.ROOT,
+                        "[OTC Dev] Order refresh: %d orders, %d delivery, %d long, %.3f ms",
+                        slots, deliveryOrders, longDistanceOrders, elapsedMs)).withStyle(ChatFormatting.GRAY);
+                sw.getPlayers(player -> player.distanceToSqr(this.worldPosition.getX() + 0.5D, this.worldPosition.getY() + 0.5D, this.worldPosition.getZ() + 0.5D) <= 4096.0D)
+                        .forEach(player -> player.sendSystemMessage(message));
             }
         }
         setChanged();
+        syncToClients();
         if (this.level != null) {
             this.level.playSound(null, this.worldPosition, ModSounds.ORDER_REFRESH.get(), SoundSource.BLOCKS, 1.0f, 1.0f);
             BlockState state = this.level.getBlockState(this.worldPosition);
@@ -295,9 +327,24 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
                     BlockState s1 = state.setValue(OrderMachineBlock.MODE, OrderMachineBlock.Mode.PRINTING).setValue(OrderMachineBlock.FRAME, 0);
                     sw.setBlock(this.worldPosition, s1, Block.UPDATE_ALL);
                     sw.scheduleTick(this.worldPosition, block, OrderMachineBlock.BEAT_TICKS);
+                    spawnNewOrderSparkles(sw);
                 }
             }
         }
+    }
+
+    private void spawnNewOrderSparkles(ServerLevel sw) {
+        sw.sendParticles(
+                ParticleTypes.END_ROD,
+                this.worldPosition.getX() + 0.5,
+                this.worldPosition.getY() + 0.85,
+                this.worldPosition.getZ() + 0.5,
+                10,
+                0.22,
+                0.18,
+                0.22,
+                0.015
+        );
     }
 
     public static List<Item> getBoundBoardMenuFoods(ServerLevel sw, BlockPos machinePos) {
@@ -380,11 +427,8 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         ArrayList<Item> list = new ArrayList<>();
         for (ItemStack s : be.getItems()) {
             if (s.isEmpty()) continue;
-            int nutrition = ConfigManager.getCustomMenuNutrition(s);
-            if (nutrition <= 0) {
-                FoodProperties fc = s.getItem().getFoodProperties();
-                nutrition = (fc != null) ? fc.getNutrition() : 0;
-            }
+            int nutrition = cn.breezeth.ordertocook.api.MenuFoodCompatApi.resolve(
+                    s, cn.breezeth.ordertocook.api.MenuFoodCompatApi.Purpose.ORDER_GENERATION).nutrition();
             if (nutrition <= 0) continue;
             list.add(s.getItem());
         }
@@ -561,8 +605,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         active = target;
         if (!active) {
             inventory.clear();
+            setMachineRenderState(OrderMachineBlock.Mode.IDLE);
         }
         setChanged();
+        syncToClients();
         return true;
     }
 
@@ -600,12 +646,17 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     public void onOrderAccepted() {
         if (this.level == null || this.level.isClientSide) return;
         ServerLevel sw = (ServerLevel) this.level;
+        for (int i = 0; i < this.inventory.size(); i++) {
+            this.inventory.set(i, ItemStack.EMPTY);
+        }
+        setChanged();
         BlockState state = sw.getBlockState(this.worldPosition);
         if (state.getBlock() instanceof OrderMachineBlock) {
             BlockState idle = state.setValue(OrderMachineBlock.MODE, OrderMachineBlock.Mode.IDLE)
                                    .setValue(OrderMachineBlock.FRAME, 0);
             sw.setBlock(this.worldPosition, idle, Block.UPDATE_ALL);
         }
+        syncToClients();
     }
 
     public void recordAcceptedOrder(ServerPlayer player, CompoundTag nbt) {
@@ -741,5 +792,96 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
             this.inventory.set(i, s);
         }
         setChanged();
+    }
+
+    public boolean hasPendingOrders() {
+        for (ItemStack stack : inventory) {
+            if (!stack.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean shouldRenderOrderLayer() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) != OrderMachineBlock.Mode.IDLE;
+    }
+
+    public boolean shouldPlayNewOrderAnimation() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.PRINTING;
+    }
+
+    public boolean shouldHoldNewOrderLastFrame() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.WAITING;
+    }
+
+    private void setMachineRenderState(OrderMachineBlock.Mode mode) {
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        BlockState state = this.level.getBlockState(this.worldPosition);
+        if (state.getBlock() instanceof OrderMachineBlock && state.hasProperty(OrderMachineBlock.MODE)) {
+            this.level.setBlock(this.worldPosition, state.setValue(OrderMachineBlock.MODE, mode).setValue(OrderMachineBlock.FRAME, 0), Block.UPDATE_ALL);
+        }
+    }
+
+    private void syncToClients() {
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> {
+            String animation = shouldPlayNewOrderAnimation() ? "neworder" : "";
+            if (!animation.equals(lastRenderAnimation)) {
+                lastRenderAnimation = animation;
+                state.getController().forceAnimationReset();
+            }
+            if (animation.isEmpty()) {
+                return PlayState.STOP;
+            }
+            state.setAndContinue(RawAnimation.begin().thenPlay(animation));
+            return PlayState.CONTINUE;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+
+    @Override
+    public CompoundTag getUpdateTag() {
+        return saveWithoutMetadata();
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag) {
+        load(tag);
+    }
+
+    @Nullable
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null) {
+            load(tag);
+        }
     }
 }

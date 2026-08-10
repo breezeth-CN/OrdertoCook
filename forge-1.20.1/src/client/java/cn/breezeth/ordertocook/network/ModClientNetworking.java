@@ -47,6 +47,10 @@ public final class ModClientNetworking {
         });
     }
 
+    public static void handleCustomMenuSync(ModNetworking.CustomMenuSyncS2CPayload payload) {
+        cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(payload.json());
+    }
+
     public static void handleVanillaEraFaresChronRequirements(ModNetworking.VanillaEraFaresChronRequirementsS2CPayload payload) {
         Minecraft.getInstance().execute(() -> VANILLA_ERA_FARES_CHRON_REQUIREMENTS = parseExtraUpgradeRequirementsJson(payload.json()));
     }

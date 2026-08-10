@@ -22,6 +22,7 @@ import cn.breezeth.ordertocook.registry.ModSounds;
 import cn.breezeth.ordertocook.command.ModCommands;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
@@ -65,6 +66,7 @@ public class OrderToCookMod implements ModInitializer {
         ModCriteria.register();
 		ModNetworking.registerPayloadTypes();
 		ModNetworking.registerServerReceivers();
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> ModNetworking.sendCustomMenuSync(handler.player));
         NpcNames.init();
         ModCommands.register();
 
@@ -229,7 +231,9 @@ public class OrderToCookMod implements ModInitializer {
                 }
                 DataCompat.set(order, nbt);
                 String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
-                OrderNpcManager.tagNpc(player, orderId, npc);
+                long expiryTick = nbt.contains(ModConstants.NBT_EXPIRY_TICK) ? nbt.getLong(ModConstants.NBT_EXPIRY_TICK) : -1L;
+                long expirySys = nbt.contains(ModConstants.NBT_EXPIRY_TIME) ? nbt.getLong(ModConstants.NBT_EXPIRY_TIME) : -1L;
+                OrderNpcManager.tagNpc(player, orderId, expiryTick, expirySys, npc);
             }
 
             OrderNpcManager.changeToNormalTeam((ServerWorld) world, npc);
@@ -243,9 +247,16 @@ public class OrderToCookMod implements ModInitializer {
             return ActionResult.SUCCESS;
         });
 
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) ->
+                OrderNpcManager.isManagedTouhouMaid(entity)
+                        ? ActionResult.success(world.isClient)
+                        : ActionResult.PASS);
+
         // Walk-in NPC Despawn Tick
         ServerTickEvents.END_WORLD_TICK.register(world -> {
+            cn.breezeth.ordertocook.core.OrderNpcManager.tickCompletionAnimations(world);
             if (world.getTime() % 100 == 0) {
+                cn.breezeth.ordertocook.core.OrderNpcManager.migrateLegacyCustomerSeats(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.checkDespawn(world);
                 cn.breezeth.ordertocook.core.OrderNpcManager.checkOrderNpcDespawn(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.cleanupChairSeats(world);

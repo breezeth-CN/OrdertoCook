@@ -11,8 +11,15 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
-public class FoodPlateBlockEntity extends BlockEntity {
+public class FoodPlateBlockEntity extends BlockEntity implements GeoBlockEntity {
     private static final int VARIANT_COUNT = 10;
     private static final int STAGE_ONE_TICK = 15;
     private static final int STAGE_TWO_TICK = 60;
@@ -22,6 +29,7 @@ public class FoodPlateBlockEntity extends BlockEntity {
     private ItemStack plateStack = ItemStack.EMPTY;
     private int eatingTicks = -1;
     private int plateVariant = 1;
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public FoodPlateBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.FOOD_PLATE_DISPLAY, pos, state);
@@ -29,6 +37,14 @@ public class FoodPlateBlockEntity extends BlockEntity {
 
     public ItemStack getPlateStack() {
         return plateStack;
+    }
+
+    public boolean isEatingSequenceActive() {
+        return eatingTicks >= 0;
+    }
+
+    public boolean shouldRenderPlacedAnimation() {
+        return getCachedState().contains(FoodPlateBlock.STAGE) && getCachedState().get(FoodPlateBlock.STAGE) == 0;
     }
 
     public void setPlateStack(ItemStack stack) {
@@ -113,5 +129,21 @@ public class FoodPlateBlockEntity extends BlockEntity {
         }
         this.eatingTicks = nbt.contains("EatingTicks") ? nbt.getInt("EatingTicks") : -1;
         this.plateVariant = nbt.contains("PlateVariant") ? Math.max(1, Math.min(VARIANT_COUNT, nbt.getInt("PlateVariant"))) : 1;
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> {
+            if (!shouldRenderPlacedAnimation()) {
+                return PlayState.STOP;
+            }
+            state.setAndContinue(RawAnimation.begin().thenPlay("maked"));
+            return PlayState.CONTINUE;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
     }
 }

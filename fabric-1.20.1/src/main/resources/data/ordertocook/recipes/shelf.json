@@ -2,17 +2,24 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "P P",
-    "P  ",
-    "P P"
+    "PS ",
+    "PL ",
+    "PS "
   ],
   "key": {
     "P": {
       "tag": "minecraft:planks"
+    },
+    "S": {
+      "tag": "minecraft:wooden_slabs"
+    },
+    "L": {
+      "item": "minecraft:leather"
     }
   },
   "result": {
     "item": "ordertocook:shelf",
-    "count": 1
+    "count": 1,
+    "nbt": "{OtcPrefill:1b}"
   }
 }

@@ -3,6 +3,8 @@ package cn.breezeth.ordertocook.core;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.World;
@@ -14,6 +16,7 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import cn.breezeth.ordertocook.config.ConfigManager;
+import cn.breezeth.ordertocook.compat.TouhouLittleMaidCustomerCompat;
 import cn.breezeth.ordertocook.registry.ModBlocks;
 import cn.breezeth.ordertocook.entity.SeatEntity;
 import cn.breezeth.ordertocook.registry.ModEntities;
@@ -24,10 +27,25 @@ import net.minecraft.entity.decoration.ArmorStandEntity;
 
 public final class OrderNpcManager {
     private static final ConcurrentHashMap<String, UUID> orderToNpc = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, PendingCompatCompletion> pendingCompatCompletions = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, PendingTouhouSpawn> pendingTouhouSpawns = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, Integer> pendingTouhouSwingStages = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, PendingBoomBonusData> pendingTouhouBoomBonuses = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Long> deliverySpawnSearchTicks = new ConcurrentHashMap<>();
     private static final String TAG_NPC = "otc_npc";
     private static final String TAG_ORDER_PREFIX = "otc_order:";
     private static final String TAG_ORDER_EXPIRY_TICK_PREFIX = "otc_order_expiry_tick:";
     private static final String TAG_ORDER_EXPIRY_SYS_PREFIX = "otc_order_expiry_sys:";
+    private static final String TAG_TOUHOU_SPAWN = "otc_touhou_spawn";
+    private static final String TAG_TOUHOU_SPAWN_START_PREFIX = "otc_touhou_spawn_start:";
+    private static final String TAG_TOUHOU_SPAWN_FINISH_PREFIX = "otc_touhou_spawn_finish:";
+    private static final String TAG_TOUHOU_SPAWN_SEATED_PREFIX = "otc_touhou_spawn_seated:";
+    private static final String TAG_TOUHOU_COMPLETION = "otc_touhou_completion";
+    private static final String TAG_TOUHOU_COMPLETION_ORDER_PREFIX = "otc_touhou_completion_order:";
+    private static final String TAG_TOUHOU_COMPLETION_START_PREFIX = "otc_touhou_completion_start:";
+    private static final String TAG_TOUHOU_COMPLETION_FINISH_PREFIX = "otc_touhou_completion_finish:";
+    private static final String TAG_TOUHOU_COMPLETION_EATING_PREFIX = "otc_touhou_completion_eating:";
+    private static final String TAG_TOUHOU_COMPLETION_ANIMATION_PREFIX = "otc_touhou_completion_animation:";
 
     public static final String TAG_WALKIN = "otc_walkin";
     public static final String TAG_WALKIN_SPAWN_TIME = "otc_walkin_spawn_time:"; // Stores world time ticks
@@ -36,13 +54,43 @@ public final class OrderNpcManager {
     public static final String TAG_WALKIN_BOARD_POS_PREFIX = "otc_walkin_board_pos:";
     public static final String TAG_CHAIR_SEAT = "otc_chair_seat";
     public static final String TAG_CHAIR_SEAT_POS_PREFIX = "otc_chair_seat_pos:";
+    public static final String TAG_CHAIR_CUSTOMER = "otc_chair_customer";
+    public static final String TAG_CHAIR_CUSTOMER_POS_PREFIX = "otc_chair_customer_pos:";
     private static final double SEAT_Y_OFFSET = 1.0 - (9.0 / 16.0) + 0.6;
+    // Maid customers sit eight pixels above the unified baseline.
+    private static final double TOUHOU_MAID_SEAT_Y_OFFSET = SEAT_Y_OFFSET - (9.0 / 16.0);
 
     public enum CompletionAnimation {
         EAT_BOOM,
         EAT_SCALE,
         SIT_TAKE,
         STAND_TAKE
+    }
+
+    public record PendingBoomBonusData(
+            String playerUuid,
+            int machineId,
+            boolean delivery,
+            boolean longDistance,
+            int deliveryDistance,
+            boolean walkIn,
+            String restaurantName,
+            String customerName,
+            int bonusCoin
+    ) {
+    }
+
+    public static void setPendingTouhouBoomBonus(UUID npcUuid, PendingBoomBonusData data) {
+        if (npcUuid == null || data == null || data.bonusCoin() <= 0) {
+            return;
+        }
+        pendingTouhouBoomBonuses.put(npcUuid, data);
+    }
+
+    public static void clearPendingTouhouBoomBonus(UUID npcUuid) {
+        if (npcUuid != null) {
+            pendingTouhouBoomBonuses.remove(npcUuid);
+        }
     }
 
     public static boolean spawnWalkIn(ServerWorld world, BlockPos machinePos, int level) {
@@ -53,9 +101,48 @@ public final class OrderNpcManager {
         WalkInNpcManager.checkDespawn(world);
     }
 
+    public static boolean acquireDeliverySpawnSearchBudget(ServerWorld world) {
+        String dimension = world.getRegistryKey().getValue().toString();
+        long tick = world.getTime();
+        Long previous = deliverySpawnSearchTicks.put(dimension, tick);
+        return previous == null || previous.longValue() != tick;
+    }
+
+    public static void tickCompletionAnimations(ServerWorld world) {
+        boolean recoveryScan = world.getTime() % 20L == 0L;
+        tickPendingTouhouSpawns(world, recoveryScan);
+        tickPendingCompatCompletions(world, recoveryScan);
+        if (recoveryScan) tickTouhouIdleAnimations(world);
+    }
+
+    private static void tickTouhouIdleAnimations(ServerWorld world) {
+        for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+            if (!(entity instanceof net.minecraft.entity.LivingEntity living)) {
+                continue;
+            }
+            if (!TouhouLittleMaidCustomerCompat.isTouhouMaid(living)) {
+                continue;
+            }
+            if (living.getCommandTags().contains(TAG_TOUHOU_COMPLETION)) {
+                continue;
+            }
+            if (isChairCustomer(living)) {
+                TouhouLittleMaidCustomerCompat.tickIdleSitAnimation(living);
+            } else {
+                TouhouLittleMaidCustomerCompat.stopIdleAnimation(living);
+            }
+        }
+    }
+
     public static void checkOrderNpcDespawn(ServerWorld world) {
         long nowTick = world.getTime();
         long nowSys = System.currentTimeMillis();
+        for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+            if (entity instanceof net.minecraft.entity.LivingEntity living
+                    && living.getCommandTags().contains(TAG_NPC)) {
+                OrderNpcRegistry.register(living.getUuid());
+            }
+        }
         java.util.List<net.minecraft.entity.LivingEntity> toDespawn = new java.util.ArrayList<>();
         for (java.util.UUID id : OrderNpcRegistry.ids()) {
             net.minecraft.entity.Entity entity = world.getEntity(id);
@@ -112,6 +199,9 @@ public final class OrderNpcManager {
             }
         }
         for (net.minecraft.entity.LivingEntity le : toDespawn) {
+            if (pendingCompatCompletions.containsKey(le.getUuid())) {
+                continue;
+            }
             String orderId = null;
             for (String tag : le.getCommandTags()) {
                 if (tag.startsWith(TAG_ORDER_PREFIX)) {
@@ -269,7 +359,9 @@ public final class OrderNpcManager {
         setupOrderTeam(world, npc);
         tagNpc(player, orderId, expiryTick, expirySys, npc);
         addMapping(player, orderId, npc);
-        player.sendMessage(Text.translatable("message.ordertocook.npc_respawn_success", customerName, String.valueOf(pos.getX()), String.valueOf(pos.getZ())).formatted(Formatting.AQUA), false);
+        if (pos.getX() != targetPos.getX() || pos.getZ() != targetPos.getZ()) {
+            player.sendMessage(Text.translatable("message.ordertocook.npc_respawn_success", customerName, String.valueOf(pos.getX()), String.valueOf(pos.getZ())).formatted(Formatting.AQUA), false);
+        }
         if (ConfigManager.isDevModeEnabled()) {
             Text typeName = Text.translatable(npc.getType().getTranslationKey());
             player.sendMessage(Text.translatable("message.ordertocook.npc_spawn_delivery", orderId, typeName, pos.getX(), pos.getY(), pos.getZ()).formatted(Formatting.AQUA), false);
@@ -345,6 +437,10 @@ public final class OrderNpcManager {
         if (ConfigManager.isDevModeEnabled() && player != null) {
             player.sendMessage(Text.translatable("message.ordertocook.npc_despawn", orderId, reasonText(DespawnReason.COMPLETED)).formatted(Formatting.GRAY), false);
         }
+        if (TouhouLittleMaidCustomerCompat.isTouhouMaid(npc)) {
+            beginTouhouMaidCompletion(world, orderId, npc, animation);
+            return;
+        }
         world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, npc.getX(), npc.getY() + 0.5, npc.getZ(), 30, 0.3, 0.5, 0.3, 0.1);
         world.playSound(
                 null,
@@ -364,6 +460,360 @@ public final class OrderNpcManager {
             return;
         }
         despawnEntity(world, player, orderId, npc, DespawnReason.COMPLETED);
+    }
+
+    private static void beginTouhouMaidCompletion(ServerWorld world, String orderId, net.minecraft.entity.LivingEntity npc, CompletionAnimation animation) {
+        boolean eating = animation == CompletionAnimation.EAT_BOOM || animation == CompletionAnimation.EAT_SCALE;
+        boolean seated = isChairCustomer(npc);
+        if (eating && seated) {
+            standMaidOnChairForEating(npc);
+            seated = false;
+        }
+        int durationTicks = switch (animation) {
+            case EAT_BOOM -> 120;
+            case EAT_SCALE -> 110;
+            case SIT_TAKE -> 40;
+            case STAND_TAKE -> 60;
+        };
+        TouhouLittleMaidCustomerCompat.startCompletionAnimation(npc, eating, seated);
+        long startTick = world.getTime();
+        long finishTick = startTick + durationTicks;
+        PendingCompatCompletion pending = new PendingCompatCompletion(orderId, startTick, finishTick, eating, animation);
+        pendingCompatCompletions.put(npc.getUuid(), pending);
+        pendingTouhouSwingStages.put(npc.getUuid(), 0);
+        writeTouhouCompletionTags(npc, pending);
+        if (ConfigManager.isDevModeEnabled()) {
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.info("[OTC Dev] Touhou maid completion start orderId={} uuid={} animation={} duration={}", orderId, npc.getUuid(), animation, durationTicks);
+        }
+    }
+
+    public static Text interruptTouhouMaidEatingNear(ServerWorld world, BlockPos platePos) {
+        java.util.List<net.minecraft.entity.LivingEntity> maids = world.getEntitiesByClass(
+                net.minecraft.entity.LivingEntity.class,
+                new net.minecraft.util.math.Box(platePos).expand(3.0),
+                entity -> TouhouLittleMaidCustomerCompat.isTouhouMaid(entity) && isTouhouMaidEating(entity)
+        );
+        if (maids.isEmpty()) {
+            return null;
+        }
+        net.minecraft.entity.LivingEntity maid = maids.get(0);
+        String orderId = "touhou";
+        PendingCompatCompletion previous = pendingCompatCompletions.get(maid.getUuid());
+        if (previous == null) {
+            previous = readTouhouCompletionTags(maid);
+        }
+        if (previous != null) {
+            orderId = previous.orderId();
+        }
+
+        pendingTouhouBoomBonuses.remove(maid.getUuid());
+        clearTouhouCompletionTags(maid);
+        long startTick = world.getTime();
+        PendingCompatCompletion pending = new PendingCompatCompletion(orderId, startTick, startTick + 10L, true, CompletionAnimation.EAT_SCALE);
+        pendingCompatCompletions.put(maid.getUuid(), pending);
+        writeTouhouCompletionTags(maid, pending);
+        TouhouLittleMaidCustomerCompat.startCompletionAnimation(maid, true, isChairCustomer(maid));
+        return maid.getCustomName() != null
+                ? maid.getCustomName()
+                : Text.translatable("keyword.ordertocook.customer");
+    }
+
+    private static boolean isTouhouMaidEating(net.minecraft.entity.LivingEntity entity) {
+        PendingCompatCompletion pending = pendingCompatCompletions.get(entity.getUuid());
+        if (pending == null) {
+            pending = readTouhouCompletionTags(entity);
+        }
+        return pending != null && pending.eating();
+    }
+
+    private static void beginTouhouSpawn(ServerWorld world, net.minecraft.entity.LivingEntity npc, boolean seated) {
+        long startTick = world.getTime();
+        PendingTouhouSpawn pending = new PendingTouhouSpawn(startTick, startTick + 12L, seated);
+        pendingTouhouSpawns.put(npc.getUuid(), pending);
+        writeTouhouSpawnTags(npc, pending);
+        TouhouLittleMaidCustomerCompat.stopIdleAnimation(npc);
+        TouhouLittleMaidCustomerCompat.setSitting(npc, seated);
+        world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.NEUTRAL, 0.55f, 1.35f);
+        world.spawnParticles(ParticleTypes.PORTAL, npc.getX(), npc.getY() + 0.65, npc.getZ(), 24, 0.24, 0.35, 0.24, 0.09);
+    }
+
+    private static void tickPendingTouhouSpawns(ServerWorld world, boolean recoveryScan) {
+        java.util.HashSet<UUID> ids = new java.util.HashSet<>(pendingTouhouSpawns.keySet());
+        if (recoveryScan) {
+            for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+                if (entity.getCommandTags().contains(TAG_TOUHOU_SPAWN)) ids.add(entity.getUuid());
+            }
+        }
+        long now = world.getTime();
+        for (UUID uuid : ids) {
+            net.minecraft.entity.Entity entity = world.getEntity(uuid);
+            if (!(entity instanceof net.minecraft.entity.LivingEntity npc) || npc.isRemoved()) {
+                pendingTouhouSpawns.remove(uuid);
+                continue;
+            }
+            PendingTouhouSpawn pending = pendingTouhouSpawns.get(uuid);
+            if (pending == null) {
+                pending = readTouhouSpawnTags(npc);
+                if (pending == null) {
+                    continue;
+                }
+                pendingTouhouSpawns.put(uuid, pending);
+            }
+            long elapsed = now - pending.startTick();
+            TouhouLittleMaidCustomerCompat.setSitting(npc, pending.seated());
+            if (elapsed >= 0L && elapsed < 12L && elapsed % 3L == 0L) {
+                world.spawnParticles(ParticleTypes.CLOUD, npc.getX(), npc.getY() + 0.25 + elapsed * 0.035, npc.getZ(), 5, 0.18, 0.14, 0.18, 0.025);
+            }
+            if (now < pending.finishTick()) {
+                continue;
+            }
+            pendingTouhouSpawns.remove(uuid);
+            clearTouhouSpawnTags(npc);
+            if (pending.seated() && isChairCustomer(npc)) {
+                TouhouLittleMaidCustomerCompat.startIdleSitAnimation(npc);
+            } else {
+                TouhouLittleMaidCustomerCompat.setSitting(npc, false);
+            }
+        }
+    }
+
+    private static void tickPendingCompatCompletions(ServerWorld world, boolean recoveryScan) {
+        java.util.HashSet<UUID> ids = new java.util.HashSet<>(pendingCompatCompletions.keySet());
+        if (recoveryScan) {
+            for (UUID id : OrderNpcRegistry.ids()) {
+                net.minecraft.entity.Entity entity = world.getEntity(id);
+                if (entity != null && entity.getCommandTags().contains(TAG_TOUHOU_COMPLETION)) ids.add(id);
+            }
+            for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+                if (entity.getCommandTags().contains(TAG_TOUHOU_COMPLETION)) ids.add(entity.getUuid());
+            }
+        }
+        long now = world.getTime();
+        for (UUID uuid : ids) {
+            net.minecraft.entity.Entity entity = world.getEntity(uuid);
+            if (!(entity instanceof net.minecraft.entity.LivingEntity npc) || npc.isRemoved()) {
+                pendingCompatCompletions.remove(uuid);
+                continue;
+            }
+            PendingCompatCompletion pending = pendingCompatCompletions.get(uuid);
+            if (pending == null) {
+                pending = readTouhouCompletionTags(npc);
+                if (pending == null) {
+                    clearTouhouCompletionTags(npc);
+                    despawnEntity(world, null, "touhou_recovery", npc, DespawnReason.COMPLETED);
+                    continue;
+                }
+                pendingCompatCompletions.put(uuid, pending);
+            }
+            long elapsed = now - pending.startTick();
+            boolean seated = npc.hasVehicle() && isChairCustomer(npc);
+            TouhouLittleMaidCustomerCompat.maintainCompletionPose(npc, seated);
+            if (pending.eating()) {
+                TouhouLittleMaidCustomerCompat.faceFood(npc, getCustomerPlateDisplayPos(npc));
+            }
+            int swingStage = elapsed >= 100 ? 4 : elapsed >= 80 ? 3 : elapsed >= 60 ? 2 : elapsed >= 15 ? 1 : 0;
+            int previousSwingStage = pendingTouhouSwingStages.getOrDefault(uuid, swingStage);
+            pendingTouhouSwingStages.putIfAbsent(uuid, previousSwingStage);
+            if (pending.eating() && swingStage > previousSwingStage) {
+                boolean leftHand = (swingStage & 1) == 0;
+                pendingTouhouSwingStages.put(uuid, swingStage);
+                TouhouLittleMaidCustomerCompat.tickCompletionAnimation(npc, true, seated, leftHand);
+            }
+            if (pending.eating() && elapsed >= 45 && elapsed < 95 && elapsed % 7 == 0) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_GENERIC_EAT, SoundCategory.NEUTRAL, 0.7f, 0.9f + world.random.nextFloat() * 0.2f);
+                world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, npc.getX(), npc.getY() + 0.75, npc.getZ(), 2, 0.18, 0.22, 0.18, 0.02);
+            } else if (!pending.eating() && elapsed % 12 == 0) {
+                TouhouLittleMaidCustomerCompat.tickCompletionAnimation(npc, false, seated);
+            }
+            if (pending.animation() == CompletionAnimation.SIT_TAKE && elapsed == 35) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+                world.spawnParticles(ParticleTypes.PORTAL, npc.getX(), npc.getY() + 0.8, npc.getZ(), 40, 0.35, 0.5, 0.35, 0.2);
+            } else if (pending.animation() == CompletionAnimation.STAND_TAKE && elapsed == 55) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+                world.spawnParticles(ParticleTypes.PORTAL, npc.getX(), npc.getY() + 0.8, npc.getZ(), 40, 0.35, 0.5, 0.35, 0.2);
+            }
+            if (pending.animation() == CompletionAnimation.EAT_BOOM && elapsed == 97) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_CREEPER_PRIMED, SoundCategory.NEUTRAL, 0.9f, 1.0f);
+            }
+            if (pending.animation() == CompletionAnimation.EAT_BOOM && elapsed == 118) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+                world.spawnParticles(ParticleTypes.EXPLOSION_EMITTER, npc.getX(), npc.getY() + 0.8, npc.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
+                world.spawnParticles(ParticleTypes.CLOUD, npc.getX(), npc.getY() + 0.8, npc.getZ(), 18, 0.3, 0.4, 0.3, 0.05);
+                grantPendingTouhouBoomBonus(world, uuid);
+            } else if (pending.animation() == CompletionAnimation.EAT_SCALE && elapsed == getEatScaleSignalTick(pending)) {
+                world.playSound(null, npc.getBlockPos(), SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+                world.spawnParticles(ParticleTypes.PORTAL, npc.getX(), npc.getY() + 0.8, npc.getZ(), 40, 0.35, 0.5, 0.35, 0.2);
+            }
+            if (now < pending.finishTick()) {
+                continue;
+            }
+            pendingCompatCompletions.remove(uuid);
+            pendingTouhouSwingStages.remove(uuid);
+            pendingTouhouBoomBonuses.remove(uuid);
+            clearTouhouCompletionTags(npc);
+            if (ConfigManager.isDevModeEnabled()) {
+                cn.breezeth.ordertocook.OrderToCookMod.LOGGER.info("[OTC Dev] Touhou maid completion finish orderId={} uuid={}", pending.orderId(), uuid);
+            }
+            TouhouLittleMaidCustomerCompat.stopCompletionAnimation(npc);
+            if (pending.animation() == CompletionAnimation.EAT_BOOM) {
+                world.spawnParticles(ParticleTypes.EXPLOSION, npc.getX(), npc.getY() + 0.8, npc.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
+            } else if (pending.animation() == CompletionAnimation.EAT_SCALE) {
+                world.spawnParticles(ParticleTypes.PORTAL, npc.getX(), npc.getY() + 0.8, npc.getZ(), 35, 0.25, 0.45, 0.25, 0.16);
+            }
+            despawnEntity(world, null, pending.orderId(), npc, DespawnReason.COMPLETED);
+        }
+    }
+
+    private static long getEatScaleSignalTick(PendingCompatCompletion pending) {
+        return pending.finishTick() - pending.startTick() <= 10L ? 5L : 105L;
+    }
+
+    private static void grantPendingTouhouBoomBonus(ServerWorld world, UUID uuid) {
+        PendingBoomBonusData data = pendingTouhouBoomBonuses.remove(uuid);
+        if (data == null || data.bonusCoin() <= 0 || world.getServer() == null) {
+            return;
+        }
+        try {
+            PlayerEntity player = data.playerUuid().isBlank() ? null : world.getServer().getPlayerManager().getPlayer(java.util.UUID.fromString(data.playerUuid()));
+            if (player != null) {
+                cn.breezeth.ordertocook.util.CoinUtils.giveCoins(player, data.bonusCoin());
+                cn.breezeth.ordertocook.core.PrestigeManager.addPlayerPrestige(player, data.bonusCoin());
+                if (player instanceof net.minecraft.server.network.ServerPlayerEntity serverPlayer) {
+                    int totalEarned = cn.breezeth.ordertocook.core.PrestigeManager.getPlayerPrestige(player);
+                    cn.breezeth.ordertocook.registry.ModCriteria.TOTAL_COIN.trigger(serverPlayer, totalEarned);
+                }
+            }
+            if (data.machineId() > 0) {
+                cn.breezeth.ordertocook.core.RestaurantRegistry.applyProfitBonusById(world, data.machineId(), data.bonusCoin(), data.delivery(), data.longDistance(), data.deliveryDistance(), data.walkIn());
+            }
+            String restaurantName = data.restaurantName().isBlank()
+                    ? Text.translatable("keyword.ordertocook.unknown").getString()
+                    : data.restaurantName();
+            String customerName = data.customerName().isBlank()
+                    ? Text.translatable("keyword.ordertocook.customer").getString()
+                    : data.customerName();
+            world.getServer().getPlayerManager().broadcast(Text.translatable(
+                    "message.ordertocook.order_boom_bonus",
+                    restaurantName,
+                    customerName,
+                    data.bonusCoin()
+            ).formatted(net.minecraft.util.Formatting.GOLD), false);
+        } catch (IllegalArgumentException ignored) {
+        }
+    }
+
+    private static void writeTouhouSpawnTags(net.minecraft.entity.Entity entity, PendingTouhouSpawn pending) {
+        clearTouhouSpawnTags(entity);
+        entity.addCommandTag(TAG_TOUHOU_SPAWN);
+        entity.addCommandTag(TAG_TOUHOU_SPAWN_START_PREFIX + pending.startTick());
+        entity.addCommandTag(TAG_TOUHOU_SPAWN_FINISH_PREFIX + pending.finishTick());
+        entity.addCommandTag(TAG_TOUHOU_SPAWN_SEATED_PREFIX + pending.seated());
+    }
+
+    private static PendingTouhouSpawn readTouhouSpawnTags(net.minecraft.entity.Entity entity) {
+        if (!entity.getCommandTags().contains(TAG_TOUHOU_SPAWN)) {
+            return null;
+        }
+        long startTick = -1L;
+        long finishTick = -1L;
+        boolean seated = false;
+        for (String tag : entity.getCommandTags()) {
+            if (tag.startsWith(TAG_TOUHOU_SPAWN_START_PREFIX)) {
+                startTick = parseLongTag(tag, TAG_TOUHOU_SPAWN_START_PREFIX, -1L);
+            } else if (tag.startsWith(TAG_TOUHOU_SPAWN_FINISH_PREFIX)) {
+                finishTick = parseLongTag(tag, TAG_TOUHOU_SPAWN_FINISH_PREFIX, -1L);
+            } else if (tag.startsWith(TAG_TOUHOU_SPAWN_SEATED_PREFIX)) {
+                seated = Boolean.parseBoolean(tag.substring(TAG_TOUHOU_SPAWN_SEATED_PREFIX.length()));
+            }
+        }
+        if (startTick < 0L || finishTick < 0L) {
+            return null;
+        }
+        return new PendingTouhouSpawn(startTick, finishTick, seated);
+    }
+
+    private static void clearTouhouSpawnTags(net.minecraft.entity.Entity entity) {
+        java.util.List<String> tags = java.util.List.copyOf(entity.getCommandTags());
+        for (String tag : tags) {
+            if (tag.equals(TAG_TOUHOU_SPAWN)
+                    || tag.startsWith(TAG_TOUHOU_SPAWN_START_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_SPAWN_FINISH_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_SPAWN_SEATED_PREFIX)) {
+                entity.removeScoreboardTag(tag);
+            }
+        }
+    }
+
+    private static void writeTouhouCompletionTags(net.minecraft.entity.Entity entity, PendingCompatCompletion pending) {
+        clearTouhouCompletionTags(entity);
+        entity.addCommandTag(TAG_NPC);
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION);
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION_ORDER_PREFIX + pending.orderId());
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION_START_PREFIX + pending.startTick());
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION_FINISH_PREFIX + pending.finishTick());
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION_EATING_PREFIX + pending.eating());
+        entity.addCommandTag(TAG_TOUHOU_COMPLETION_ANIMATION_PREFIX + pending.animation().name());
+        OrderNpcRegistry.register(entity.getUuid());
+    }
+
+    private static PendingCompatCompletion readTouhouCompletionTags(net.minecraft.entity.Entity entity) {
+        if (!entity.getCommandTags().contains(TAG_TOUHOU_COMPLETION)) {
+            return null;
+        }
+        String orderId = "touhou";
+        long startTick = -1L;
+        long finishTick = -1L;
+        boolean eating = false;
+        CompletionAnimation animation = CompletionAnimation.STAND_TAKE;
+        for (String tag : entity.getCommandTags()) {
+            if (tag.startsWith(TAG_TOUHOU_COMPLETION_ORDER_PREFIX)) {
+                orderId = tag.substring(TAG_TOUHOU_COMPLETION_ORDER_PREFIX.length());
+            } else if (tag.startsWith(TAG_TOUHOU_COMPLETION_START_PREFIX)) {
+                startTick = parseLongTag(tag, TAG_TOUHOU_COMPLETION_START_PREFIX, -1L);
+            } else if (tag.startsWith(TAG_TOUHOU_COMPLETION_FINISH_PREFIX)) {
+                finishTick = parseLongTag(tag, TAG_TOUHOU_COMPLETION_FINISH_PREFIX, -1L);
+            } else if (tag.startsWith(TAG_TOUHOU_COMPLETION_EATING_PREFIX)) {
+                eating = Boolean.parseBoolean(tag.substring(TAG_TOUHOU_COMPLETION_EATING_PREFIX.length()));
+            } else if (tag.startsWith(TAG_TOUHOU_COMPLETION_ANIMATION_PREFIX)) {
+                try {
+                    animation = CompletionAnimation.valueOf(tag.substring(TAG_TOUHOU_COMPLETION_ANIMATION_PREFIX.length()));
+                } catch (IllegalArgumentException ignored) {
+                    animation = CompletionAnimation.STAND_TAKE;
+                }
+            }
+        }
+        if (startTick < 0L || finishTick < 0L) {
+            return null;
+        }
+        return new PendingCompatCompletion(orderId, startTick, finishTick, eating, animation);
+    }
+
+    private static long parseLongTag(String tag, String prefix, long fallback) {
+        try {
+            return Long.parseLong(tag.substring(prefix.length()));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private static void clearTouhouCompletionTags(net.minecraft.entity.Entity entity) {
+        java.util.List<String> tags = java.util.List.copyOf(entity.getCommandTags());
+        for (String tag : tags) {
+            if (tag.equals(TAG_TOUHOU_COMPLETION)
+                    || tag.startsWith(TAG_TOUHOU_COMPLETION_ORDER_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_COMPLETION_START_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_COMPLETION_FINISH_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_COMPLETION_EATING_PREFIX)
+                    || tag.startsWith(TAG_TOUHOU_COMPLETION_ANIMATION_PREFIX)) {
+                entity.removeScoreboardTag(tag);
+            }
+        }
+    }
+
+    private record PendingCompatCompletion(String orderId, long startTick, long finishTick, boolean eating, CompletionAnimation animation) {
+    }
+
+    private record PendingTouhouSpawn(long startTick, long finishTick, boolean seated) {
     }
 
     public static void finishAnimatedDeparture(ServerWorld world, cn.breezeth.ordertocook.entity.CustomerEntity npc) {
@@ -621,6 +1071,7 @@ public final class OrderNpcManager {
     }
 
     public static void tagNpc(PlayerEntity player, String orderId, long expiryTick, long expirySys, net.minecraft.entity.LivingEntity npc) {
+        stripWalkInTags(npc);
         npc.addCommandTag(TAG_NPC);
         npc.addCommandTag(TAG_ORDER_PREFIX + orderId);
 
@@ -633,6 +1084,7 @@ public final class OrderNpcManager {
 
         net.minecraft.entity.Entity veh = npc.getVehicle();
         if (veh instanceof SeatEntity seat) {
+            stripWalkInTags(seat);
             seat.addCommandTag(TAG_NPC);
             seat.addCommandTag(TAG_ORDER_PREFIX + orderId);
             stripExpiryTags(seat);
@@ -642,6 +1094,7 @@ public final class OrderNpcManager {
                 seat.addCommandTag(TAG_ORDER_EXPIRY_SYS_PREFIX + expirySys);
             }
         } else if (veh instanceof ArmorStandEntity seat) {
+            stripWalkInTags(seat);
             seat.addCommandTag(TAG_NPC);
             seat.addCommandTag(TAG_ORDER_PREFIX + orderId);
             stripExpiryTags(seat);
@@ -671,9 +1124,11 @@ public final class OrderNpcManager {
     private static void clearCompletionTags(net.minecraft.entity.Entity entity) {
         entity.removeScoreboardTag(TAG_NPC);
         entity.removeScoreboardTag(TAG_WALKIN);
+        entity.removeScoreboardTag(TAG_CHAIR_CUSTOMER);
         java.util.List<String> tags = java.util.List.copyOf(entity.getCommandTags());
         for (String tag : tags) {
             if (tag.startsWith(TAG_ORDER_PREFIX)
+                    || tag.startsWith(TAG_CHAIR_CUSTOMER_POS_PREFIX)
                     || tag.startsWith(TAG_ORDER_EXPIRY_TICK_PREFIX)
                     || tag.startsWith(TAG_ORDER_EXPIRY_SYS_PREFIX)) {
                 entity.removeScoreboardTag(tag);
@@ -703,11 +1158,24 @@ public final class OrderNpcManager {
     }
 
     static net.minecraft.entity.LivingEntity createNpc(ServerWorld world, BlockPos pos, CustomerProfileLibrary.CustomerProfile profile, String customerId) {
-        cn.breezeth.ordertocook.entity.CustomerEntity entity = ModEntities.CUSTOMER.create(world);
-        if (entity == null) return null;
         CustomerProfileLibrary.CustomerProfile finalProfile = profile == null
                 ? CustomerProfileLibrary.createWalkInProfile(world, Text.translatable("keyword.ordertocook.customer").getString())
                 : profile;
+        float yaw = world.random.nextFloat() * 360.0f;
+
+        if (TouhouLittleMaidCustomerCompat.canUseFor(finalProfile)) {
+            net.minecraft.entity.LivingEntity maid = TouhouLittleMaidCustomerCompat.createMaid(world, finalProfile.toNameText(), yaw);
+            if (maid != null) {
+                prepareCommonNpc(maid);
+                if (spawnPreparedNpc(world, pos, maid, yaw, true)) {
+                    return maid;
+                }
+                maid.discard();
+            }
+        }
+
+        cn.breezeth.ordertocook.entity.CustomerEntity entity = ModEntities.CUSTOMER.create(world);
+        if (entity == null) return null;
         entity.setTextureVariant(finalProfile.textureVariant());
         entity.setSkinAccount(finalProfile.skinAccount());
         entity.setSkinUuid(finalProfile.skinUuid());
@@ -715,14 +1183,27 @@ public final class OrderNpcManager {
         entity.assignRandomAnimationVariant(world.random);
         entity.setCustomerId(customerId == null ? "" : customerId);
 
-        float yaw = world.random.nextFloat() * 360.0f;
         entity.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
         entity.setAiDisabled(false);
-        entity.setPersistent();
+        entity.setCustomName(finalProfile.toNameText());
+        prepareCommonNpc(entity);
+        if (spawnPreparedNpc(world, pos, entity, yaw, false)) {
+            return entity;
+        }
+        return null;
+    }
+
+    private static void prepareCommonNpc(net.minecraft.entity.LivingEntity entity) {
+        if (entity instanceof net.minecraft.entity.mob.MobEntity mob) {
+            mob.setPersistent();
+        }
         entity.setInvulnerable(true);
         entity.setSilent(true);
-        entity.setCustomName(finalProfile.toNameText());
+        if (entity.getCustomName() == null) {
+            entity.setCustomName(Text.translatable("keyword.ordertocook.customer"));
+        }
         entity.setCustomNameVisible(true);
+        entity.setGlowing(true);
         entity.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.GLOWING, 20 * 60 * 30, 0, false, false, true));
         entity.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.HUNGER, 20 * 60 * 30, 0, false, false, true));
         if (entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED) != null) {
@@ -731,16 +1212,19 @@ public final class OrderNpcManager {
         if (entity.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE) != null) {
             entity.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE).setBaseValue(0.0);
         }
+    }
 
+    private static boolean spawnPreparedNpc(ServerWorld world, BlockPos pos, net.minecraft.entity.LivingEntity entity, float yaw, boolean touhouMaid) {
         if (world.getBlockState(pos.down()).getBlock() == ModBlocks.CHAIR) {
             float chairYaw = world.getBlockState(pos.down()).get(cn.breezeth.ordertocook.block.ChairBlock.FACING).asRotation();
+            entity.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, chairYaw, 0.0f);
             entity.setYaw(chairYaw);
             entity.setHeadYaw(chairYaw);
             entity.setBodyYaw(chairYaw);
             entity.prevYaw = chairYaw;
 
-            SeatEntity seat = new SeatEntity(ModEntities.SEAT, world);
-            seat.setPos(pos.getX() + 0.5, pos.getY() - SEAT_Y_OFFSET, pos.getZ() + 0.5);
+            SeatEntity seat = new SeatEntity(ModEntities.CUSTOMER_SEAT, world);
+            seat.setPos(pos.getX() + 0.5, pos.getY() - (touhouMaid ? TOUHOU_MAID_SEAT_Y_OFFSET : SEAT_Y_OFFSET), pos.getZ() + 0.5);
             seat.setYaw(chairYaw);
             seat.setInvisible(true);
             seat.setNoGravity(true);
@@ -748,32 +1232,49 @@ public final class OrderNpcManager {
             seat.setInvulnerable(true);
             seat.addCommandTag(TAG_CHAIR_SEAT);
             seat.addCommandTag(TAG_CHAIR_SEAT_POS_PREFIX + pos.down().asLong());
-            if (!world.spawnEntity(seat)) return null;
+            if (!world.spawnEntity(seat)) return false;
+            entity.addCommandTag(TAG_CHAIR_CUSTOMER);
+            entity.addCommandTag(TAG_CHAIR_CUSTOMER_POS_PREFIX + pos.down().asLong());
 
             BlockPos spawnPos = pos;
             if (!isHeadClear(world, spawnPos)) {
                 spawnPos = findTempSpawnPosNear(world, pos, 2);
                 if (spawnPos == null) {
                     seat.discard();
-                    return null;
+                    return false;
                 }
                 entity.refreshPositionAndAngles(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, chairYaw, 0.0f);
+            }
+            if (touhouMaid) {
+                TouhouLittleMaidCustomerCompat.initializeSpawnData(world, entity);
             }
 
             if (!world.spawnEntity(entity)) {
                 seat.discard();
-                return null;
+                return false;
             }
             entity.startRiding(seat, true);
-            entity.startSitSpawnAnimation();
+            if (entity instanceof cn.breezeth.ordertocook.entity.CustomerEntity customer) {
+                customer.startSitSpawnAnimation();
+            } else if (touhouMaid) {
+                beginTouhouSpawn(world, entity, true);
+            }
             OrderNpcRegistry.register(entity.getUuid());
-            return entity;
+            return true;
         }
 
-        if (!world.spawnEntity(entity)) return null;
-        entity.startStandSpawnAnimation();
+        entity.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
+        if (touhouMaid) {
+            TouhouLittleMaidCustomerCompat.initializeSpawnData(world, entity);
+        }
+        if (!world.spawnEntity(entity)) return false;
+        if (entity instanceof cn.breezeth.ordertocook.entity.CustomerEntity customer) {
+            customer.startStandSpawnAnimation();
+        } else if (touhouMaid) {
+            beginTouhouSpawn(world, entity, false);
+        }
         OrderNpcRegistry.register(entity.getUuid());
-        return entity;
+        return true;
     }
 
     public static BlockPos getCustomerPlateDisplayPos(net.minecraft.entity.LivingEntity npc) {
@@ -791,15 +1292,90 @@ public final class OrderNpcManager {
         return npc.getBlockPos().offset(npc.getHorizontalFacing()).up();
     }
 
+    public static boolean isChairCustomer(net.minecraft.entity.LivingEntity npc) {
+        return getCustomerChairPos(npc) != null;
+    }
+
+    private static void stripWalkInTags(net.minecraft.entity.Entity entity) {
+        for (String tag : java.util.List.copyOf(entity.getCommandTags())) {
+            if (tag.equals(TAG_WALKIN) || tag.equals("otc_walkin_interacted") || tag.startsWith("otc_level:")
+                    || tag.startsWith(TAG_WALKIN_SPAWN_TIME) || tag.startsWith(TAG_WALKIN_SPAWN_SYSTEM_TIME)
+                    || tag.startsWith(TAG_WALKIN_MACHINE_POS_PREFIX) || tag.startsWith(TAG_WALKIN_BOARD_POS_PREFIX)) {
+                entity.removeScoreboardTag(tag);
+            }
+        }
+    }
+
+    public static boolean isManagedTouhouMaid(net.minecraft.entity.Entity entity) {
+        return entity instanceof net.minecraft.entity.LivingEntity living
+                && TouhouLittleMaidCustomerCompat.isTouhouMaid(living)
+                && (living.getCommandTags().contains(TAG_NPC)
+                || living.getCommandTags().contains(TAG_WALKIN)
+                || living.getCommandTags().contains(TAG_TOUHOU_SPAWN)
+                || living.getCommandTags().contains(TAG_TOUHOU_COMPLETION));
+    }
+
+    public static void migrateLegacyCustomerSeats(ServerWorld world) {
+        java.util.List<SeatEntity> legacySeats = new java.util.ArrayList<>();
+        for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+            if (entity instanceof SeatEntity seat
+                    && seat.getType() == ModEntities.SEAT
+                    && seat.getCommandTags().contains(TAG_CHAIR_SEAT)
+                    && seat.getFirstPassenger() instanceof net.minecraft.entity.LivingEntity living
+                    && living.getCommandTags().contains(TAG_CHAIR_CUSTOMER)) {
+                legacySeats.add(seat);
+            }
+        }
+        for (SeatEntity oldSeat : legacySeats) {
+            net.minecraft.entity.Entity passenger = oldSeat.getFirstPassenger();
+            if (!(passenger instanceof net.minecraft.entity.LivingEntity living) || passenger.isRemoved()) continue;
+            SeatEntity newSeat = new SeatEntity(ModEntities.CUSTOMER_SEAT, world);
+            newSeat.refreshPositionAndAngles(oldSeat.getX(), oldSeat.getY(), oldSeat.getZ(), oldSeat.getYaw(), oldSeat.getPitch());
+            newSeat.setInvisible(true);
+            newSeat.setNoGravity(true);
+            newSeat.setSilent(true);
+            newSeat.setInvulnerable(true);
+            for (String tag : oldSeat.getCommandTags()) newSeat.addCommandTag(tag);
+            passenger.stopRiding();
+            if (world.spawnEntity(newSeat) && living.startRiding(newSeat, true)) {
+                oldSeat.discard();
+            } else {
+                newSeat.discard();
+                living.startRiding(oldSeat, true);
+            }
+        }
+    }
+
+    private static void standMaidOnChairForEating(net.minecraft.entity.LivingEntity maid) {
+        BlockPos chairPos = getCustomerChairPos(maid);
+        net.minecraft.entity.Entity seat = maid.getVehicle();
+        maid.stopRiding();
+        if (seat instanceof SeatEntity) seat.discard();
+        if (chairPos != null) {
+            maid.setPosition(chairPos.getX() + 0.5D, chairPos.getY() + 0.5D, chairPos.getZ() + 0.5D);
+        }
+        maid.setVelocity(net.minecraft.util.math.Vec3d.ZERO);
+        maid.setNoGravity(true);
+        TouhouLittleMaidCustomerCompat.setSitting(maid, false);
+    }
+
     private static BlockPos getCustomerChairPos(net.minecraft.entity.LivingEntity npc) {
         net.minecraft.entity.Entity vehicle = npc.getVehicle();
-        if (vehicle == null) {
-            return null;
+        if (vehicle != null) {
+            for (String tag : vehicle.getCommandTags()) {
+                if (tag.startsWith(TAG_CHAIR_SEAT_POS_PREFIX)) {
+                    try {
+                        return BlockPos.fromLong(Long.parseLong(tag.substring(TAG_CHAIR_SEAT_POS_PREFIX.length())));
+                    } catch (NumberFormatException ignored) {
+                        return null;
+                    }
+                }
+            }
         }
-        for (String tag : vehicle.getCommandTags()) {
-            if (tag.startsWith(TAG_CHAIR_SEAT_POS_PREFIX)) {
+        for (String tag : npc.getCommandTags()) {
+            if (tag.startsWith(TAG_CHAIR_CUSTOMER_POS_PREFIX)) {
                 try {
-                    return BlockPos.fromLong(Long.parseLong(tag.substring(TAG_CHAIR_SEAT_POS_PREFIX.length())));
+                    return BlockPos.fromLong(Long.parseLong(tag.substring(TAG_CHAIR_CUSTOMER_POS_PREFIX.length())));
                 } catch (NumberFormatException ignored) {
                     return null;
                 }
@@ -893,28 +1469,34 @@ public final class OrderNpcManager {
     private static BlockPos tryFindDrySpot(ServerWorld world, BlockPos targetPos, int radius, int attempts, FailureCounters counters) {
         int x = targetPos.getX();
         int z = targetPos.getZ();
-        for (int i = 0; i < attempts; i++) {
-            int dx = world.random.nextBetween(-radius, radius);
-            int dz = world.random.nextBetween(-radius, radius);
-            int candX = x + dx;
-            int candZ = z + dz;
-            int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, candX, candZ);
-            int spawnY = topY;
-            if (topY <= world.getBottomY() + 1) {
-                counters.lowY++;
+        int checked = 0;
+        for (int ring = 1; ring <= radius && checked < attempts; ring++) {
+            for (int dx = -ring; dx <= ring && checked < attempts; dx++) {
+                for (int dz : new int[]{-ring, ring}) {
+                    if (checked++ >= attempts) break;
+                    BlockPos found = checkLoadedDeliveryColumn(world, x + dx, z + dz, counters);
+                    if (found != null) return found;
+                }
             }
-            BlockPos pos = new BlockPos(candX, spawnY, candZ);
-            if (!isHeadClear(world, pos)) {
-                counters.space++;
-                continue;
+            for (int dz = -ring + 1; dz < ring && checked < attempts; dz++) {
+                for (int dx : new int[]{-ring, ring}) {
+                    if (checked++ >= attempts) break;
+                    BlockPos found = checkLoadedDeliveryColumn(world, x + dx, z + dz, counters);
+                    if (found != null) return found;
+                }
             }
-            if (!isDry(world, pos)) {
-                counters.water++;
-                continue;
-            }
-            return pos;
         }
         return null;
+    }
+
+    private static BlockPos checkLoadedDeliveryColumn(ServerWorld world, int x, int z, FailureCounters counters) {
+        if (!world.getChunkManager().isChunkLoaded(x >> 4, z >> 4)) return null;
+        int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        if (topY <= world.getBottomY() + 1) counters.lowY++;
+        BlockPos pos = new BlockPos(x, topY, z);
+        if (!isHeadClear(world, pos)) { counters.space++; return null; }
+        if (!isDry(world, pos)) { counters.water++; return null; }
+        return pos;
     }
 
     private static boolean isHeadClear(World world, BlockPos pos) {

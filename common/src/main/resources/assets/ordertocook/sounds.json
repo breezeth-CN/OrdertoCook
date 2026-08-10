@@ -40,5 +40,25 @@
     "sounds": [
       "ordertocook:food_plate_place"
     ]
+  },
+  "dishwasher_in": {
+    "sounds": [
+      "ordertocook:dishwasher/in"
+    ]
+  },
+  "dishwasher_out": {
+    "sounds": [
+      "ordertocook:dishwasher/out"
+    ]
+  },
+  "dishwasher_clear_out": {
+    "sounds": [
+      "ordertocook:dishwasher/clear_out"
+    ]
+  },
+  "dishwasher_washing": {
+    "sounds": [
+      "ordertocook:dishwasher/washing"
+    ]
   }
 }

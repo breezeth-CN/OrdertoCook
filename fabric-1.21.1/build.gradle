@@ -10,6 +10,10 @@ base {
 archivesName = localProps.getProperty("archives_base_name") ?: (project.hasProperty("archives_base_name") ? project.archives_base_name : "ordertocook")
 }
 repositories {
+    exclusiveContent {
+        forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
     maven { name = 'BMCLAPI'; url = 'https://bmclapi2.bangbang93.com/maven/' }
     maven { url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
     maven { url = 'https://maven.aliyun.com/repository/public' }
@@ -53,6 +57,7 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${localProps.getProperty('geckolib_version') ?: (project.hasProperty('geckolib_version') ? project.geckolib_version : '4.8.4')}"
+    modCompileOnly "maven.modrinth:jade:15.10.4+fabric"
     if ((localProps.getProperty('enable_jei_runtime') ?: 'false').toBoolean()) {
         modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
     }
@@ -96,14 +101,13 @@ tasks.withType(Test).configureEach {
 
 def modVer = localProps.getProperty("mod_version") ?: (project.hasProperty("mod_version") ? project.mod_version : project.version)
 def mcVer = localProps.getProperty("minecraft_version") ?: (project.hasProperty("minecraft_version") ? project.minecraft_version : "1.21.1")
-def mcMinor = mcVer.tokenize('.').take(2).join('.')
 tasks.withType(Jar).configureEach {
     if (name == 'jar') {
-        archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+        archiveFileName = "ordertocook-${modVer}-fabric${mcVer}.jar"
     }
 }
 tasks.named("remapJar").configure {
-    archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+    archiveFileName = "ordertocook-${modVer}-fabric${mcVer}.jar"
 }
 
 tasks.named("sourcesJar").configure {

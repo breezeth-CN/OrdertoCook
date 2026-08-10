@@ -15,6 +15,7 @@ public class MachineRankingState extends SavedData {
     public static final int INITIAL_ID = 10001;
 
     private final Map<Integer, Stats> machines = new HashMap<>();
+    private final java.util.HashMap<Long, Integer> posToId = new java.util.HashMap<>();
     private int nextId = INITIAL_ID;
 
     public static class Stats {
@@ -42,6 +43,11 @@ public class MachineRankingState extends SavedData {
     public static MachineRankingState read(CompoundTag nbt, HolderLookup.Provider registryLookup) {
         MachineRankingState state = new MachineRankingState();
         state.nextId = nbt.contains("nextId") ? nbt.getInt("nextId") : INITIAL_ID;
+        ListTag posList = nbt.getList("posToId", Tag.TAG_COMPOUND);
+        for (Tag e : posList) {
+            CompoundTag c = (CompoundTag) e;
+            state.posToId.put(c.getLong("pos"), c.getInt("id"));
+        }
         ListTag list = nbt.getList("machines", Tag.TAG_COMPOUND);
         for (Tag e : list) {
             CompoundTag comp = (CompoundTag) e;
@@ -86,6 +92,14 @@ public class MachineRankingState extends SavedData {
             list.add(c);
         }
         nbt.put("machines", list);
+        ListTag posList = new ListTag();
+        for (var en : posToId.entrySet()) {
+            CompoundTag c = new CompoundTag();
+            c.putLong("pos", en.getKey());
+            c.putInt("id", en.getValue());
+            posList.add(c);
+        }
+        nbt.put("posToId", posList);
         return nbt;
     }
 
@@ -126,6 +140,20 @@ public class MachineRankingState extends SavedData {
     public void setPlaced(int id, boolean placed) {
         Stats s = machines.computeIfAbsent(id, k -> new Stats());
         s.isPlaced = placed;
+        setDirty();
+    }
+
+    public int getPosMapping(long posKey) {
+        return posToId.getOrDefault(posKey, 0);
+    }
+
+    public void savePosMapping(long posKey, int machineId) {
+        posToId.put(posKey, machineId);
+        setDirty();
+    }
+
+    public void removePosMapping(long posKey) {
+        posToId.remove(posKey);
         setDirty();
     }
 }

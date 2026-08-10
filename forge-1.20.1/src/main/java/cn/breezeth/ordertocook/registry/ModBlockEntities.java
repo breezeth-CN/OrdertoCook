@@ -1,8 +1,11 @@
 package cn.breezeth.ordertocook.registry;
 
 import cn.breezeth.ordertocook.block.entity.BoardBlockEntity;
+import cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity;
 import cn.breezeth.ordertocook.block.entity.FoodPlateBlockEntity;
 import cn.breezeth.ordertocook.block.entity.OrderMachineBlockEntity;
+import cn.breezeth.ordertocook.block.entity.RefrigeratorBlockEntity;
+import cn.breezeth.ordertocook.block.entity.StoveBlockEntity;
 import cn.breezeth.ordertocook.block.entity.TakeoutBagBlockEntity;
 import cn.breezeth.ordertocook.block.entity.TakeoutBoxBlockEntity;
 import cn.breezeth.ordertocook.block.entity.WashingTableBlockEntity;
@@ -31,6 +34,12 @@ public class ModBlockEntities {
             () -> BlockEntityType.Builder.of(BoardBlockEntity::new, ModBlocks.BOARD.get()).build(null));
     public static final RegistryObject<BlockEntityType<WashingTableBlockEntity>> WASHING_TABLE = BLOCK_ENTITIES.register("washing_table",
             () -> BlockEntityType.Builder.of(WashingTableBlockEntity::new, ModBlocks.WASHINGTABLE.get()).build(null));
+    public static final RegistryObject<BlockEntityType<DishwasherBlockEntity>> DISHWASHER = BLOCK_ENTITIES.register("dishwasher",
+            () -> BlockEntityType.Builder.of(DishwasherBlockEntity::new, ModBlocks.DISHWASHER.get()).build(null));
+    public static final RegistryObject<BlockEntityType<RefrigeratorBlockEntity>> REFRIGERATOR = BLOCK_ENTITIES.register("refrigerator",
+            () -> BlockEntityType.Builder.of(RefrigeratorBlockEntity::new, ModBlocks.REFRIGERATOR.get()).build(null));
+    public static final RegistryObject<BlockEntityType<StoveBlockEntity>> STOVE = BLOCK_ENTITIES.register("stove",
+            () -> BlockEntityType.Builder.of(StoveBlockEntity::new, ModBlocks.STOVE.get()).build(null));
 
     public static void registerBlockEntities(IEventBus modBus) {
         BLOCK_ENTITIES.register(modBus);

@@ -1,10 +1,12 @@
 package cn.breezeth.ordertocook.block;
+import cn.breezeth.ordertocook.registry.ModSounds;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
@@ -92,6 +94,7 @@ public class ShelfBlock extends Block {
         if (world.isClient) return ActionResult.SUCCESS;
 
         world.setBlockState(pos, state.with(PAPERS, papers + 1), Block.NOTIFY_ALL);
+        world.playSound(null, pos, ModSounds.BAG_PLACE, SoundCategory.BLOCKS, 1.0f, 1.0f);
         if (!player.getAbilities().creativeMode) {
             stack.decrement(1);
         }

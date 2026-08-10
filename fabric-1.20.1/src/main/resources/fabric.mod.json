@@ -5,7 +5,7 @@
 	"name": "下单了",
 	"description": "通过接取外卖订单、到店食物订单，制作并交付来获取奖励；包含等级成长、概率加成、加急订单等玩法机制",
 	"authors": [
-		"breezeth (微风)"
+		"微风breezeth"
 	],
 	"contributors": [
 		"Ao22333"
@@ -14,7 +14,7 @@
 		"homepage": "https://space.bilibili.com/21676027",
 		"issues": "https://www.mcmod.cn/class/25025.html）"
 	},
-	"license": "All Rights Reserved",
+	"license": "[GPL-3.0 license](https://github.com/breezeth-CN/OrdertoCook?tab=GPL-3.0-1-ov-file#)",
 	"icon": "assets/ordertocook/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -23,6 +23,9 @@
 		],
 		"client": [
 			"cn.breezeth.ordertocook.client.OrderToCookModClient"
+		],
+		"jade": [
+			"cn.breezeth.ordertocook.compat.jade.OrderToCookJadePlugin"
 		]
 	},
 	"mixins": [
@@ -36,6 +39,7 @@
 		"fabric-api": "*"
 	},
 	"suggests": {
-		"geckolib": ">=4.8.3"
+		"geckolib": ">=4.8.3",
+		"jade": "*"
 	}
 }

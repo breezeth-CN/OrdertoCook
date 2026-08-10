@@ -55,27 +55,36 @@ public final class WalkInNpcManager {
 
     public static void checkDespawn(ServerWorld world) {
         long nowTick = world.getTime();
-        long maxAgeTicks = 10 * 60 * 20;
+        long nowSys = System.currentTimeMillis();
+        long maxAgeTicks = ModConstants.URGENT_DURATION_TICKS;
+        long maxAgeMillis = maxAgeTicks * 50L;
         java.util.List<net.minecraft.entity.LivingEntity> toDespawn = new java.util.ArrayList<>();
-        for (java.util.UUID id : OrderNpcRegistry.ids()) {
-            net.minecraft.entity.Entity entity = world.getEntity(id);
+        for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
             if (!(entity instanceof net.minecraft.entity.LivingEntity le)) continue;
             if (!le.getCommandTags().contains(OrderNpcManager.TAG_WALKIN)) continue;
+            OrderNpcRegistry.register(le.getUuid());
             long spawnTick = -1;
+            long spawnSys = -1;
             for (String tag : le.getCommandTags()) {
                 if (tag.startsWith(OrderNpcManager.TAG_WALKIN_SPAWN_TIME)) {
                     try {
                         spawnTick = Long.parseLong(tag.substring(OrderNpcManager.TAG_WALKIN_SPAWN_TIME.length()));
                     } catch (NumberFormatException ignored) {
                     }
-                    break;
+                } else if (tag.startsWith(OrderNpcManager.TAG_WALKIN_SPAWN_SYSTEM_TIME)) {
+                    try {
+                        spawnSys = Long.parseLong(tag.substring(OrderNpcManager.TAG_WALKIN_SPAWN_SYSTEM_TIME.length()));
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
-            if (spawnTick == -1) {
+            if (spawnTick < 0L && spawnSys < 0L) {
                 toDespawn.add(le);
                 continue;
             }
-            if (nowTick - spawnTick > maxAgeTicks) {
+            boolean tickExpired = spawnTick >= 0L && nowTick - spawnTick >= maxAgeTicks;
+            boolean systemExpired = spawnSys >= 0L && nowSys - spawnSys >= maxAgeMillis;
+            if (tickExpired || systemExpired) {
                 toDespawn.add(le);
             }
         }

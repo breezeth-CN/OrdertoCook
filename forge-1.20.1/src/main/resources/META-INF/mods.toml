@@ -1,13 +1,13 @@
 modLoader = "javafml"
 loaderVersion = "[47,)"
-license = "All Rights Reserved"
+license = "[GPL-3.0 license](https://github.com/breezeth-CN/OrdertoCook?tab=GPL-3.0-1-ov-file#)"
 issueTrackerURL = "https://www.mcmod.cn/class/25025.html"
 
 [[mods]]
 modId = "ordertocook"
 version = "${version}"
 displayName = "Order To Cook"
-authors = "breezeth"
+authors = "微风breezeth"
 credits = "Ao22333"
 description = '''
 Take restaurant and delivery orders, cook the requested food, and submit meals for rewards.

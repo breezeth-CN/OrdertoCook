@@ -26,7 +26,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.equals("cn.breezeth.ordertocook.mixin.client.compat.touhoulittlemaid.EntityChairGetYawMixin")) {
+        if (mixinClassName.startsWith("cn.breezeth.ordertocook.mixin.client.compat.touhoulittlemaid.")) {
             return tlmLoaded;
         }
         return true;

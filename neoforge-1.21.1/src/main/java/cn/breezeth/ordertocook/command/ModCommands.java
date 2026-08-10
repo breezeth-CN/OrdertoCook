@@ -16,6 +16,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 
 import cn.breezeth.ordertocook.core.OrderNpcManager;
 import cn.breezeth.ordertocook.core.CustomerProfileLibrary;
+import cn.breezeth.ordertocook.core.RestaurantRegistry;
 import cn.breezeth.ordertocook.core.WalkInNpcManager;
 
 import cn.breezeth.ordertocook.core.PrestigeManager;
@@ -100,6 +101,7 @@ public final class ModCommands {
             return 0;
         }
         src.sendSuccess(() -> Component.literal("Added custom menu item: " + stack.getHoverName().getString() + " (hunger=" + hunger + ")"), false);
+        cn.breezeth.ordertocook.network.ModNetworking.broadcastCustomMenuSync(src.getServer());
         return 1;
     }
 
@@ -126,6 +128,7 @@ public final class ModCommands {
         }
         final int addedFinal = added;
         src.sendSuccess(() -> Component.literal("Added/updated custom menu items from inventory: " + addedFinal + " entries (hunger=" + hunger + ")"), false);
+        cn.breezeth.ordertocook.network.ModNetworking.broadcastCustomMenuSync(src.getServer());
         return added;
     }
 
@@ -168,30 +171,12 @@ public final class ModCommands {
         }
 
         ServerLevel world = player.serverLevel();
-        BlockPos origin = player.blockPosition();
-        int radius = 64;
-        OrderMachineBlockEntity target = null;
-        double bestDist = Double.MAX_VALUE;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                for (int dy = -8; dy <= 8; dy++) {
-                    m.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
-                    OrderMachineBlockEntity be = world.getBlockEntity(m) instanceof OrderMachineBlockEntity om ? om : null;
-                    if (be == null) continue;
-                    double d = player.blockPosition().distSqr(be.getBlockPos());
-                    if (d < bestDist) {
-                        bestDist = d;
-                        target = be;
-                    }
-                }
-            }
-        }
+        OrderMachineBlockEntity target = findNearestMachine(world, player);
         if (target == null) {
             src.sendFailure(Component.translatable("message.ordertocook.cmd.no_machine"));
             return 0;
         }
-        
+
         final OrderMachineBlockEntity finalTarget = target;
         boolean spawned = forceEasterEgg
                 ? WalkInNpcManager.spawn(world, target.getBlockPos(), target.getRestaurantLevel(), CustomerProfileLibrary.createGuaranteedEasterEggProfile(world))
@@ -219,10 +204,39 @@ public final class ModCommands {
         }
 
         ServerLevel world = player.serverLevel();
+        OrderMachineBlockEntity target = findNearestMachine(world, player);
+        if (target == null) {
+            src.sendFailure(Component.translatable("message.ordertocook.cmd.no_machine"));
+            return 0;
+        }
+        target.forceRefresh();
+        src.sendSuccess(() -> Component.translatable("message.ordertocook.cmd.machine_refreshed"), false);
+        return 1;
+    }
+
+    @javax.annotation.Nullable
+    private static OrderMachineBlockEntity findNearestMachine(ServerLevel world, ServerPlayer player) {
         BlockPos origin = player.blockPosition();
-        int radius = 64;
         OrderMachineBlockEntity target = null;
         double bestDist = Double.MAX_VALUE;
+
+        // Scan registered machines (covers physical-structure machines)
+        for (var stats : RestaurantRegistry.allOnline()) {
+            if (stats.dimension().equals(world.dimension().location().toString())) {
+                BlockPos pos = BlockPos.of(stats.posLong());
+                if (world.getBlockEntity(pos) instanceof OrderMachineBlockEntity be) {
+                    double d = origin.distSqr(be.getBlockPos());
+                    if (d < bestDist) {
+                        bestDist = d;
+                        target = be;
+                    }
+                }
+            }
+        }
+        if (target != null) return target;
+
+        // Fallback: scan radius for unregistered/new machines
+        int radius = 64;
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
@@ -238,13 +252,7 @@ public final class ModCommands {
                 }
             }
         }
-        if (target == null) {
-            src.sendFailure(Component.translatable("message.ordertocook.cmd.no_machine"));
-            return 0;
-        }
-        target.forceRefresh();
-        src.sendSuccess(() -> Component.translatable("message.ordertocook.cmd.machine_refreshed"), false);
-        return 1;
+        return target;
     }
 
     private static boolean hasDevPermission(CommandSourceStack src) {
@@ -287,3 +295,4 @@ public final class ModCommands {
 
     private ModCommands() {}
 }
+

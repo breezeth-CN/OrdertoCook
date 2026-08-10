@@ -1,6 +1,7 @@
 package cn.breezeth.ordertocook.block;
 
 import cn.breezeth.ordertocook.block.entity.OrderMachineBlockEntity;
+import cn.breezeth.ordertocook.core.MachineRankingState;
 import cn.breezeth.ordertocook.registry.ModBlockEntities;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.ChatFormatting;
@@ -167,6 +168,7 @@ public class OrderMachineBlock extends BaseEntityBlock {
                           orderBe.setMachineId(id);
                           orderBe.setOwnerIfEmpty(sp);
                           orderBe.setPlaced(true);
+                          MachineRankingState.get(sw).removePosMapping(pos.asLong());
                           cn.breezeth.ordertocook.core.RestaurantRegistry.registerById(sw, id, orderBe);
                       }
                  }
@@ -226,6 +228,9 @@ public class OrderMachineBlock extends BaseEntityBlock {
             if (!world.isClientSide && world instanceof ServerLevel sw) {
                 BlockEntity be = world.getBlockEntity(pos);
                 if (be instanceof OrderMachineBlockEntity omb && omb.getMachineId() > 0) {
+                    if (cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.hasAvailableCompat()) {
+                        MachineRankingState.get(sw).savePosMapping(pos.asLong(), omb.getMachineId());
+                    }
                     cn.breezeth.ordertocook.core.RestaurantRegistry.unregisterById(sw, omb.getMachineId());
                 }
             }
@@ -256,3 +261,4 @@ public class OrderMachineBlock extends BaseEntityBlock {
         world.setBlock(pos, state.setValue(MODE, Mode.WAITING), Block.UPDATE_ALL);
     }
 }
+

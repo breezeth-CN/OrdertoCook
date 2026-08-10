@@ -17,7 +17,10 @@ import cn.breezeth.ordertocook.block.TakeoutBagBlock;
 import cn.breezeth.ordertocook.block.BoardBlock;
 import cn.breezeth.ordertocook.block.FoodPlateBlock;
 import cn.breezeth.ordertocook.block.PlateShelfBlock;
+import cn.breezeth.ordertocook.block.RefrigeratorBlock;
+import cn.breezeth.ordertocook.block.StoveBlock;
 import cn.breezeth.ordertocook.block.WashingTableBlock;
+import cn.breezeth.ordertocook.block.DishwasherBlock;
 
 public class ModBlocks {
     // 打单机 - 使用自定义 Block 类
@@ -51,6 +54,15 @@ public class ModBlocks {
 
     public static final Block WASHINGTABLE = registerBlock("washingtable",
             new WashingTableBlock(AbstractBlock.Settings.copy(Blocks.BRICKS)));
+
+    public static final Block DISHWASHER = registerBlock("dishwasher",
+            new DishwasherBlock(AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).nonOpaque()));
+
+    public static final Block REFRIGERATOR = registerBlock("refrigerator",
+            new RefrigeratorBlock(AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).nonOpaque()));
+
+    public static final Block STOVE = registerBlock("stove",
+            new StoveBlock(AbstractBlock.Settings.copy(Blocks.CRAFTING_TABLE).nonOpaque()));
 
     private static Block registerBlock(String name, Block block) {
         return Registry.register(Registries.BLOCK, new Identifier(ModConstants.MOD_ID, name), block);

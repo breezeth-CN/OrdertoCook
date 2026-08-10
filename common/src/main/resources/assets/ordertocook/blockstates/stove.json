@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "ordertocook:block/stove" },
+    "facing=east": { "model": "ordertocook:block/stove", "y": 90 },
+    "facing=south": { "model": "ordertocook:block/stove", "y": 180 },
+    "facing=west": { "model": "ordertocook:block/stove", "y": 270 }
+  }
+}

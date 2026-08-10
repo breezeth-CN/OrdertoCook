@@ -3,6 +3,8 @@ package cn.breezeth.ordertocook.registry;
 import cn.breezeth.ordertocook.core.ModConstants;
 import cn.breezeth.ordertocook.screen.BoardScreenHandler;
 import cn.breezeth.ordertocook.screen.OrderMachineScreenHandler;
+import cn.breezeth.ordertocook.screen.RefrigeratorScreenHandler;
+import cn.breezeth.ordertocook.screen.StoveScreenHandler;
 import cn.breezeth.ordertocook.screen.TakeoutBoxScreenHandler;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -24,6 +26,12 @@ public class ModScreenHandlers {
             () -> new MenuType<>(TakeoutBoxScreenHandler::new, FeatureFlags.VANILLA_SET));
     public static final RegistryObject<MenuType<BoardScreenHandler>> BOARD_SCREEN_HANDLER = MENUS.register("board",
             () -> new MenuType<>((syncId, inv) -> new BoardScreenHandler(syncId, inv), FeatureFlags.VANILLA_SET));
+    public static final RegistryObject<MenuType<RefrigeratorScreenHandler>> REFRIGERATOR_UPPER = MENUS.register("refrigerator_upper",
+            () -> new MenuType<>(RefrigeratorScreenHandler::clientUpper, FeatureFlags.VANILLA_SET));
+    public static final RegistryObject<MenuType<RefrigeratorScreenHandler>> REFRIGERATOR_LOWER = MENUS.register("refrigerator_lower",
+            () -> new MenuType<>(RefrigeratorScreenHandler::clientLower, FeatureFlags.VANILLA_SET));
+    public static final RegistryObject<MenuType<StoveScreenHandler>> STOVE = MENUS.register("stove",
+            () -> new MenuType<>(StoveScreenHandler::new, FeatureFlags.VANILLA_SET));
 
     public static void registerScreenHandlers(IEventBus modBus) {
         MENUS.register(modBus);

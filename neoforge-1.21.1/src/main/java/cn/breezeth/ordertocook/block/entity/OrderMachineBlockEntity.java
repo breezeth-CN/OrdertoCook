@@ -18,8 +18,13 @@ import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,9 +42,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 
-public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider, ImplementedInventory {
+public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider, ImplementedInventory, GeoBlockEntity {
     private final NonNullList<ItemStack> inventory = NonNullList.withSize(5, ItemStack.EMPTY);
     
     private int progress = 0;
@@ -68,6 +80,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     private int machineId = 0;
     private boolean isPlaced = true;
     private transient boolean oc$registeredPlacedSynced = false;
+    public transient long oc$lastSetLevelTick = Long.MIN_VALUE;
+    private static final java.util.Set<String> PENDING_PHYSICAL_DENSITY_REMOVALS = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private String lastRenderAnimation = "";
 
     protected final ContainerData propertyDelegate;
     private int effectiveBenefitLevel = 0;
@@ -181,18 +197,152 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         lastChairScanTick = Long.MIN_VALUE;
         cachedNearbyBoardMaxHunger = 0;
         cachedHasChairAround = false;
+        // Register after machineId is loaded from NBT (runs after setLevel)
+        if (!oc$registeredPlacedSynced && machineId > 0 && this.level instanceof ServerLevel sw) {
+            cn.breezeth.ordertocook.core.RestaurantRegistry.registerById(sw, machineId, this);
+            oc$registeredPlacedSynced = true;
+        }
+        if (this.level instanceof ServerLevel sw) {
+            enforcePhysicalMovedTargetDensity(sw);
+        }
     }
 
     @Override
     public void setLevel(Level world) {
         super.setLevel(world);
         if (world != null && !world.isClientSide && world instanceof ServerLevel sw) {
-            if (!oc$registeredPlacedSynced && this.machineId > 0) {
-                cn.breezeth.ordertocook.core.RestaurantRegistry.registerById(sw, this.machineId, this);
-                oc$registeredPlacedSynced = true;
+            this.oc$lastSetLevelTick = sw.getGameTime();
+            if (oc$registeredPlacedSynced) return;
+            if (this.machineId <= 0) {
+                int oldId = cn.breezeth.ordertocook.core.MachineRankingState.get(sw).getPosMapping(this.worldPosition.asLong());
+                if (oldId > 0) {
+                    this.machineId = oldId;
+                    cn.breezeth.ordertocook.core.MachineRankingState.get(sw).removePosMapping(this.worldPosition.asLong());
+                    setChanged();
+                }
             }
         }
     }
+
+    private void enforcePhysicalMovedTargetDensity(ServerLevel sw) {
+        if (!cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.consumeMovedTarget(this.worldPosition)) return;
+
+        int limit = Math.max(1, ConfigManager.get().maxOrderMachinesWithin24);
+        if (isLikelyPhysicalPlotPosition(this.worldPosition)) {
+            if (countOrderMachinesInSamePhysicalStructure(sw, this.worldPosition) <= limit) return;
+            destroySelfAsPhysicalExcess(sw, this.worldPosition.immutable(), "physical-structure");
+            return;
+        }
+
+        if (countNearbyOrderMachines(sw, this.worldPosition, 24, 8) <= limit) return;
+
+        destroySelfAsPhysicalExcess(sw, this.worldPosition.immutable(), "world");
+    }
+
+    private static void destroySelfAsPhysicalExcess(ServerLevel sw, BlockPos targetPos, String scope) {
+        String removalKey = sw.dimension().location() + ":" + targetPos.asLong();
+        if (!PENDING_PHYSICAL_DENSITY_REMOVALS.add(removalKey)) return;
+        sw.getServer().execute(() -> {
+            if (!(sw.getBlockEntity(targetPos) instanceof OrderMachineBlockEntity)) {
+                PENDING_PHYSICAL_DENSITY_REMOVALS.remove(removalKey);
+                return;
+            }
+            sw.destroyBlock(targetPos, true);
+            Component msg = Component.translatable("message.ordertocook.order_machine.density_removed", targetPos.getX(), targetPos.getY(), targetPos.getZ());
+            for (ServerPlayer player : sw.getServer().getPlayerList().getPlayers()) {
+                player.displayClientMessage(msg, false);
+            }
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.warn("[OTC] Destroyed physical-structure excess order machine at {} ({})", targetPos, scope);
+            PENDING_PHYSICAL_DENSITY_REMOVALS.remove(removalKey);
+        });
+    }
+
+    private static boolean isLikelyPhysicalPlotPosition(BlockPos pos) {
+        return Math.abs(pos.getX()) > 1_000_000 || Math.abs(pos.getZ()) > 1_000_000;
+    }
+
+    private static int countOrderMachinesInSamePhysicalStructure(ServerLevel sw, BlockPos center) {
+        java.util.UUID structureId = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.getStructureId(sw, center);
+        if (structureId == null) return 1;
+        int count = 0;
+        boolean centerSeen = false;
+        String dimension = sw.dimension().location().toString();
+        for (var snapshot : cn.breezeth.ordertocook.core.RestaurantRegistry.allOnline()) {
+            if (!dimension.equals(snapshot.dimension())) continue;
+            BlockPos machinePos = BlockPos.of(snapshot.posLong());
+            java.util.UUID otherStructureId = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.getStructureId(sw, machinePos);
+            if (structureId.equals(otherStructureId)) {
+                count++;
+                if (machinePos.equals(center)) {
+                    centerSeen = true;
+                }
+            }
+        }
+        if (!centerSeen && sw.getBlockEntity(center) instanceof OrderMachineBlockEntity) {
+            count++;
+        }
+        return count;
+    }
+
+    private static int countNearbyOrderMachines(ServerLevel sw, BlockPos center, int horizontalRadius, int verticalRadius) {
+        int count = 0;
+        int radiusSq = horizontalRadius * horizontalRadius;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+            for (int dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+                if (dx * dx + dz * dz > radiusSq) continue;
+                for (int dy = -verticalRadius; dy <= verticalRadius; dy++) {
+                    cursor.set(center.getX() + dx, center.getY() + dy, center.getZ() + dz);
+                    if (sw.getBlockEntity(cursor) instanceof OrderMachineBlockEntity) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    private void enforcePhysicalConnectedStructureDensity(ServerLevel sw) {
+        if (machineId <= 0 || !cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.hasAvailableCompat()) return;
+        java.util.Set<java.util.UUID> connectedIds = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.getConnectedStructureIds(sw, this.worldPosition);
+        if (connectedIds.isEmpty()) return;
+
+        int limit = Math.max(1, ConfigManager.get().maxOrderMachinesWithin24);
+        java.util.List<PhysicalMachineRef> machines = new java.util.ArrayList<>();
+        boolean centerSeen = false;
+        String dimension = sw.dimension().location().toString();
+        for (var snapshot : cn.breezeth.ordertocook.core.RestaurantRegistry.allOnline()) {
+            if (!dimension.equals(snapshot.dimension())) continue;
+            BlockPos machinePos = BlockPos.of(snapshot.posLong());
+            java.util.UUID structureId = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.getStructureId(sw, machinePos);
+            if (structureId != null && connectedIds.contains(structureId)) {
+                int id = 0;
+                if (sw.getBlockEntity(machinePos) instanceof OrderMachineBlockEntity omb) {
+                    id = omb.getMachineId();
+                }
+                machines.add(new PhysicalMachineRef(id > 0 ? id : Integer.MAX_VALUE, machinePos.immutable()));
+                if (machinePos.equals(this.worldPosition)) {
+                    centerSeen = true;
+                }
+            }
+        }
+        if (!centerSeen) {
+            machines.add(new PhysicalMachineRef(machineId, this.worldPosition.immutable()));
+        }
+        if (machines.size() <= limit) return;
+
+        machines.sort(java.util.Comparator
+                .comparingInt(PhysicalMachineRef::machineId)
+                .thenComparingLong(ref -> ref.pos().asLong()));
+        for (int i = limit; i < machines.size(); i++) {
+            if (machines.get(i).pos().equals(this.worldPosition)) {
+                destroySelfAsPhysicalExcess(sw, this.worldPosition.immutable(), "connected-structure");
+                return;
+            }
+        }
+    }
+
+    private record PhysicalMachineRef(int machineId, BlockPos pos) {}
 
     public void scheduleInitialization(int ticks) {
         this.initDelay = ticks;
@@ -237,6 +387,18 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
              initialized = true;
         }
 
+        // Physical-structure NPC maintenance for moving restaurants.
+        if (this.level instanceof ServerLevel sw && sw.getGameTime() % 100 == 0
+                && cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.hasAvailableCompat()) {
+            cn.breezeth.ordertocook.core.WalkInNpcManager.checkDespawn(sw);
+            cn.breezeth.ordertocook.core.OrderNpcManager.checkOrderNpcDespawn(sw);
+            cn.breezeth.ordertocook.core.WalkInNpcManager.cleanupChairSeats(sw);
+        }
+        if (this.level instanceof ServerLevel sw && cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.hasAvailableCompat()
+                && Math.floorMod(sw.getGameTime() + this.worldPosition.asLong(), 100L) == 0L) {
+            enforcePhysicalConnectedStructureDensity(sw);
+        }
+
         if (!active) return;
         progress++;
         if (progress >= getRefreshTimeTicks()) {
@@ -277,15 +439,33 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     }
 
     private void refreshOrders() {
+        long generationStartedNanos = System.nanoTime();
         inventory.clear();
         int slots = getUnlockedSlots(restaurantLevel);
+        int deliveryOrders = 0;
+        int longDistanceOrders = 0;
         if (this.level instanceof ServerLevel sw) {
             List<Item> menuFoods = getMenuFoodsForMachine(sw, this.worldPosition);
             for (int i = 0; i < slots; i++) {
-                inventory.set(i, OrderGenerator.generateRandomOrder(sw, this.worldPosition, restaurantLevel, menuFoods));
+                ItemStack generated = OrderGenerator.generateRandomOrder(sw, this.worldPosition, restaurantLevel, menuFoods);
+                inventory.set(i, generated);
+                CompoundTag generatedNbt = DataCompat.copy(generated);
+                if (generatedNbt != null && generatedNbt.getBoolean(ModConstants.NBT_DELIVERY)) {
+                    deliveryOrders++;
+                    if (generatedNbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE)) longDistanceOrders++;
+                }
+            }
+            if (ConfigManager.isDevModeEnabled()) {
+                double elapsedMs = (System.nanoTime() - generationStartedNanos) / 1_000_000.0D;
+                Component message = Component.literal(String.format(java.util.Locale.ROOT,
+                        "[OTC Dev] Order refresh: %d orders, %d delivery, %d long, %.3f ms",
+                        slots, deliveryOrders, longDistanceOrders, elapsedMs)).withStyle(ChatFormatting.GRAY);
+                sw.getPlayers(player -> player.distanceToSqr(this.worldPosition.getX() + 0.5D, this.worldPosition.getY() + 0.5D, this.worldPosition.getZ() + 0.5D) <= 4096.0D)
+                        .forEach(player -> player.sendSystemMessage(message));
             }
         }
         setChanged();
+        syncToClients();
         if (this.level != null) {
             this.level.playSound(null, this.worldPosition, ModSounds.ORDER_REFRESH.get(), SoundSource.BLOCKS, 1.0f, 1.0f);
             BlockState state = this.level.getBlockState(this.worldPosition);
@@ -295,9 +475,24 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
                     BlockState s1 = state.setValue(OrderMachineBlock.MODE, OrderMachineBlock.Mode.PRINTING).setValue(OrderMachineBlock.FRAME, 0);
                     sw.setBlock(this.worldPosition, s1, Block.UPDATE_ALL);
                     sw.scheduleTick(this.worldPosition, block, OrderMachineBlock.BEAT_TICKS);
+                    spawnNewOrderSparkles(sw);
                 }
             }
         }
+    }
+
+    private void spawnNewOrderSparkles(ServerLevel sw) {
+        sw.sendParticles(
+                ParticleTypes.END_ROD,
+                this.worldPosition.getX() + 0.5,
+                this.worldPosition.getY() + 0.85,
+                this.worldPosition.getZ() + 0.5,
+                10,
+                0.22,
+                0.18,
+                0.22,
+                0.015
+        );
     }
 
     public static List<Item> getBoundBoardMenuFoods(ServerLevel sw, BlockPos machinePos) {
@@ -380,11 +575,8 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         ArrayList<Item> list = new ArrayList<>();
         for (ItemStack s : be.getItems()) {
             if (s.isEmpty()) continue;
-            int nutrition = ConfigManager.getCustomMenuNutrition(s);
-            if (nutrition <= 0) {
-                FoodProperties fc = s.get(net.minecraft.core.component.DataComponents.FOOD);
-                nutrition = (fc != null) ? fc.nutrition() : 0;
-            }
+            int nutrition = cn.breezeth.ordertocook.api.MenuFoodCompatApi.resolve(
+                    s, cn.breezeth.ordertocook.api.MenuFoodCompatApi.Purpose.ORDER_GENERATION).nutrition();
             if (nutrition <= 0) continue;
             list.add(s.getItem());
         }
@@ -550,8 +742,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         active = target;
         if (!active) {
             inventory.clear();
+            setMachineRenderState(OrderMachineBlock.Mode.IDLE);
         }
         setChanged();
+        syncToClients();
         return true;
     }
 
@@ -589,12 +783,17 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
     public void onOrderAccepted() {
         if (this.level == null || this.level.isClientSide) return;
         ServerLevel sw = (ServerLevel) this.level;
+        for (int i = 0; i < this.inventory.size(); i++) {
+            this.inventory.set(i, ItemStack.EMPTY);
+        }
+        setChanged();
         BlockState state = sw.getBlockState(this.worldPosition);
         if (state.getBlock() instanceof OrderMachineBlock) {
             BlockState idle = state.setValue(OrderMachineBlock.MODE, OrderMachineBlock.Mode.IDLE)
                                    .setValue(OrderMachineBlock.FRAME, 0);
             sw.setBlock(this.worldPosition, idle, Block.UPDATE_ALL);
         }
+        syncToClients();
     }
 
     public void recordAcceptedOrder(ServerPlayer player, CompoundTag nbt) {
@@ -731,4 +930,97 @@ public class OrderMachineBlockEntity extends BlockEntity implements MenuProvider
         }
         setChanged();
     }
+
+    public boolean hasPendingOrders() {
+        for (ItemStack stack : inventory) {
+            if (!stack.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean shouldRenderOrderLayer() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) != OrderMachineBlock.Mode.IDLE;
+    }
+
+    public boolean shouldPlayNewOrderAnimation() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.PRINTING;
+    }
+
+    public boolean shouldHoldNewOrderLastFrame() {
+        BlockState state = getBlockState();
+        return hasPendingOrders()
+                && state.hasProperty(OrderMachineBlock.MODE)
+                && state.getValue(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.WAITING;
+    }
+
+    private void setMachineRenderState(OrderMachineBlock.Mode mode) {
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        BlockState state = this.level.getBlockState(this.worldPosition);
+        if (state.getBlock() instanceof OrderMachineBlock && state.hasProperty(OrderMachineBlock.MODE)) {
+            this.level.setBlock(this.worldPosition, state.setValue(OrderMachineBlock.MODE, mode).setValue(OrderMachineBlock.FRAME, 0), Block.UPDATE_ALL);
+        }
+    }
+
+    private void syncToClients() {
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> {
+            String animation = shouldPlayNewOrderAnimation() ? "neworder" : "";
+            if (!animation.equals(lastRenderAnimation)) {
+                lastRenderAnimation = animation;
+                state.getController().forceAnimationReset();
+            }
+            if (animation.isEmpty()) {
+                return PlayState.STOP;
+            }
+            state.setAndContinue(RawAnimation.begin().thenPlay(animation));
+            return PlayState.CONTINUE;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registryLookup) {
+        return saveWithoutMetadata(registryLookup);
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registryLookup) {
+        loadAdditional(tag, registryLookup);
+    }
+
+    @Nullable
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registryLookup) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null) {
+            loadAdditional(tag, registryLookup);
+        }
+    }
 }
+
+

@@ -72,6 +72,8 @@ public class OrderGenerator {
         
         DataCompat.set(order, nbt);
         setOrderName(order, customer, type, delivery, urgent, isLongDistance);
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.GENERATED, world, null, order);
         
         return order;
     }
@@ -131,6 +133,8 @@ public class OrderGenerator {
 
         DataCompat.set(order, nbt);
         setOrderName(order, customer, type, delivery, urgent, isLongDistance);
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.GENERATED, world, null, order);
 
         return order;
     }
@@ -188,32 +192,36 @@ public class OrderGenerator {
     }
 
     private static void generateDeliveryPosition(ServerLevel world, net.minecraft.util.RandomSource random, BlockPos pos, CompoundTag nbt, boolean isLongDistance) {
+        BlockPos origin = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.toWorldPosition(world, pos);
         CompoundTag deliveryPosNbt = new CompoundTag();
         int minDistance = isLongDistance ? ModConstants.LONG_MIN_DISTANCE : ModConstants.SHORT_MIN_DISTANCE;
         int maxDistance = isLongDistance ? ModConstants.LONG_MAX_DISTANCE : ModConstants.SHORT_MAX_DISTANCE;
         int range = maxDistance - minDistance;
 
         int attempts = ModConstants.DELIVERY_POSITION_ATTEMPTS;
-        int targetX = pos.getX();
-        int targetZ = pos.getZ();
+        int targetX = origin.getX();
+        int targetZ = origin.getZ();
+        int fallbackX = targetX;
+        int fallbackZ = targetZ;
 
         try {
             for (int i = 0; i < attempts; i++) {
-                int signX = random.nextBoolean() ? 1 : -1;
-                int signZ = random.nextBoolean() ? 1 : -1;
-                int offsetX = signX * (minDistance + random.nextInt(range + 1));
-                int offsetZ = signZ * (minDistance + random.nextInt(range + 1));
-                int candX = pos.getX() + offsetX;
-                int candZ = pos.getZ() + offsetZ;
-                int topY = world.getHeight(Heightmap.Types.WORLD_SURFACE, candX, candZ);
-                BlockPos top = new BlockPos(candX, topY, candZ);
-                Holder<Biome> biomeEntry = world.getBiome(top);
-                boolean badBiome = biomeEntry.unwrapKey().map(k -> {
+                double radius = minDistance + random.nextDouble() * range;
+                double angle = random.nextDouble() * Math.PI * 2.0D;
+                int offsetX = (int) Math.round(Math.cos(angle) * radius);
+                int offsetZ = (int) Math.round(Math.sin(angle) * radius);
+                int candX = origin.getX() + offsetX;
+                int candZ = origin.getZ() + offsetZ;
+                BlockPos candidate = new BlockPos(candX, origin.getY(), candZ);
+                if (!world.getWorldBorder().isWithinBounds(candidate)) continue;
+                fallbackX = candX;
+                fallbackZ = candZ;
+                Holder<Biome> biomeEntry = sampleNoiseBiome(world, candX, candZ);
+                boolean badBiome = biomeEntry != null && biomeEntry.unwrapKey().map(k -> {
                     String path = k.location().getPath();
                     return path.contains("ocean") || path.contains("river");
                 }).orElse(false);
-                boolean inWater = !world.getBlockState(top).getFluidState().isEmpty();
-                if (!badBiome && !inWater) {
+                if (!badBiome) {
                     targetX = candX;
                     targetZ = candZ;
                     break;
@@ -222,14 +230,32 @@ public class OrderGenerator {
         } catch (Throwable t) {
             OrderToCookMod.LOGGER.warn("Delivery position generation failed, fallback to machine pos", t);
         }
+        if (targetX == origin.getX() && targetZ == origin.getZ()) {
+            targetX = fallbackX;
+            targetZ = fallbackZ;
+        }
 
         deliveryPosNbt.putInt(ModConstants.NBT_X, targetX);
         deliveryPosNbt.putInt(ModConstants.NBT_Z, targetZ);
         nbt.put(ModConstants.NBT_DELIVERY_POS, deliveryPosNbt);
-        int dx = targetX - pos.getX();
-        int dz = targetZ - pos.getZ();
+        int dx = targetX - origin.getX();
+        int dz = targetZ - origin.getZ();
         int dist = (int) Math.round(Math.sqrt(dx * dx + dz * dz));
         nbt.putInt(ModConstants.NBT_DELIVERY_DIST, dist);
+    }
+
+    private static Holder<Biome> sampleNoiseBiome(ServerLevel world, int blockX, int blockZ) {
+        try {
+            var chunks = world.getChunkSource();
+            int sampleY = chunks.getGenerator().getSeaLevel();
+            return chunks.getGenerator().getBiomeSource().getNoiseBiome(
+                    net.minecraft.core.QuartPos.fromBlock(blockX),
+                    net.minecraft.core.QuartPos.fromBlock(sampleY),
+                    net.minecraft.core.QuartPos.fromBlock(blockZ),
+                    chunks.randomState().sampler());
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     private static void generateFoodList(net.minecraft.util.RandomSource random, int type, CompoundTag nbt, List<Item> menuFoods) {
@@ -305,11 +331,8 @@ public class OrderGenerator {
             ResourceLocation id = ResourceLocation.tryParse(key);
             if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) continue;
             Item item = BuiltInRegistries.ITEM.get(id);
-            int nutrition = ConfigManager.getCustomMenuNutrition(item);
-            if (nutrition <= 0) {
-                FoodProperties fc = item.components().get(DataComponents.FOOD);
-                nutrition = (fc != null) ? fc.nutrition() : 0;
-            }
+            int nutrition = cn.breezeth.ordertocook.api.MenuFoodCompatApi.resolve(
+                    new ItemStack(item), cn.breezeth.ordertocook.api.MenuFoodCompatApi.Purpose.REWARD).nutrition();
             if (nutrition > 0) {
                 sum += nutrition * foodList.getInt(key);
             }
@@ -380,3 +403,4 @@ public class OrderGenerator {
         order.set(DataComponents.CUSTOM_NAME, builder);
     }
 }
+

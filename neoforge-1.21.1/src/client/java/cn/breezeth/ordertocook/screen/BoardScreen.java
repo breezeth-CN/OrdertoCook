@@ -168,13 +168,6 @@ public class BoardScreen extends AbstractContainerScreen<BoardScreenHandler> {
             graphics.blit(SLOT_BG, gx, gy, 0, 0, slotW, slotH, slotW, slotH);
             graphics.renderItem(stack, gx + 1, gy + 1);
 
-            int nutrition = nutritionOf(stack);
-            if (nutrition > 0) {
-                String text = String.valueOf(nutrition);
-                int textWidth = this.font.width(text);
-                graphics.drawString(this.font, text, gx + slotW - 2 - textWidth, gy + 6, 0x404040, false);
-            }
-
             if (isMouseOverSlot(mouseX, mouseY, gx, gy, slotW, slotH)) {
                 graphics.blit(editMode ? SLOT_HOVER_DELETE : SLOT_HOVER_NORMAL, gx, gy, 0, 0, slotW, slotH, slotW, slotH);
             }
@@ -266,7 +259,29 @@ public class BoardScreen extends AbstractContainerScreen<BoardScreenHandler> {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
+        graphics.flush();
+        renderNutritionCounts(graphics, mouseX, mouseY);
         renderTooltips(graphics, mouseX, mouseY);
+    }
+
+    private void renderNutritionCounts(GuiGraphics graphics, int mouseX, int mouseY) {
+        int startIndex = scrollOffset * COLS;
+        int endIndex = Math.min(this.menu.getTemplates().getContainerSize(), startIndex + VISIBLE_ROWS * COLS);
+        graphics.pose().pushPose();
+        graphics.pose().translate(0.0F, 0.0F, 300.0F);
+        for (int i = startIndex; i < endIndex; i++) {
+            ItemStack stack = this.menu.getTemplates().getItem(i);
+            int nutrition = stack.isEmpty() ? 0 : nutritionOf(stack);
+            if (nutrition <= 0) continue;
+            int local = i - startIndex;
+            int gx = innerX + (local % COLS) * colWidth;
+            int gy = innerY + (local / COLS) * ROW_HEIGHT;
+            if (editMode && isMouseOverSlot(mouseX, mouseY, gx, gy, colWidth - 1, 18)) continue;
+            String text = String.valueOf(nutrition);
+            graphics.drawString(this.font, text,
+                    gx + colWidth - 3 - this.font.width(text), gy + 6, 0x404040, false);
+        }
+        graphics.pose().popPose();
     }
 
     @Override

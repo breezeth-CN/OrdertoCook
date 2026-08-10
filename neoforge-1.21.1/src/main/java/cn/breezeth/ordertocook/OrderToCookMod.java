@@ -41,11 +41,14 @@ import cn.breezeth.ordertocook.item.TakeoutBagItem;
 import cn.breezeth.ordertocook.entity.SeatEntity;
 import cn.breezeth.ordertocook.vehicle.motorcycle.MotorcycleEntity;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.event.entity.EntityMountEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -76,7 +79,23 @@ public class OrderToCookMod {
         NeoForge.EVENT_BUS.addListener(this::onLevelTick);
         NeoForge.EVENT_BUS.addListener(this::onServerTick);
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, EntityMountEvent.class, this::onManagedMaidMount);
 	}
+
+    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ModNetworking.sendCustomMenuSync(player);
+        }
+    }
+
+    private void onManagedMaidMount(EntityMountEvent event) {
+        if (!event.isMounting() || !event.getEntityMounting().level().isClientSide()) return;
+        if (event.getEntityBeingMounted().getType() != ModEntities.CUSTOMER_SEAT.get()) return;
+        if (!cn.breezeth.ordertocook.compat.TouhouLittleMaidCustomerCompat.isTouhouMaid(
+                event.getEntityMounting() instanceof LivingEntity living ? living : null)) return;
+        event.setCanceled(false);
+    }
 
     private void registerAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.CUSTOMER.get(), CustomerEntity.createCustomerAttributes().build());
@@ -98,6 +117,9 @@ public class OrderToCookMod {
         }
         if (result == InteractionResult.PASS) {
             result = handleWalkInNpc(player, world, hand, entity);
+        }
+        if (result == InteractionResult.PASS && OrderNpcManager.isManagedTouhouMaid(entity)) {
+            result = InteractionResult.sidedSuccess(world.isClientSide);
         }
         if (result != InteractionResult.PASS) {
             event.setCancellationResult(result);
@@ -272,7 +294,9 @@ public class OrderToCookMod {
                 }
                 DataCompat.set(order, nbt);
                 String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
-                OrderNpcManager.tagNpc(player, orderId, npc);
+                long expiryTick = nbt.contains(ModConstants.NBT_EXPIRY_TICK) ? nbt.getLong(ModConstants.NBT_EXPIRY_TICK) : -1L;
+                long expirySys = nbt.contains(ModConstants.NBT_EXPIRY_TIME) ? nbt.getLong(ModConstants.NBT_EXPIRY_TIME) : -1L;
+                OrderNpcManager.tagNpc(player, orderId, expiryTick, expirySys, npc);
             }
             
             // Change outline color
@@ -291,11 +315,15 @@ public class OrderToCookMod {
         // Walk-in NPC Despawn Tick
     private void onLevelTick(LevelTickEvent.Post event) {
             if (!(event.getLevel() instanceof ServerLevel world)) return;
-            if (world.getGameTime() % 100 == 0) {
+            cn.breezeth.ordertocook.core.OrderNpcManager.tickCompletionAnimations(world);
+            long tick = world.getGameTime();
+            if (tick % 100 == 0) {
+                cn.breezeth.ordertocook.core.OrderNpcManager.migrateLegacyCustomerSeats(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.checkDespawn(world);
                 cn.breezeth.ordertocook.core.OrderNpcManager.checkOrderNpcDespawn(world);
                 cn.breezeth.ordertocook.core.WalkInNpcManager.cleanupChairSeats(world);
             }
+
     }
 
     private void onServerTick(ServerTickEvent.Post event) {

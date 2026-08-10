@@ -406,6 +406,7 @@ public class TakeoutBagItem extends Item {
                 cn.breezeth.ordertocook.core.RestaurantRegistry.applyCompletedDeltaById(world, machineId, finalCoin, isDelivery, isLong, deliveryDist, isWalkIn);
             }
         }
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.COMPLETED, world, player, stack);
         OrderNpcManager.beginCompletedAnimation(world, player, orderId, npc, resolveCompletionAnimation(world, player, stack, nbt, npc));
 
         stack.shrink(1);
@@ -459,6 +460,7 @@ public class TakeoutBagItem extends Item {
                 cn.breezeth.ordertocook.core.RestaurantRegistry.applyCompletedDeltaById(world, machineId, finalCoin, isDelivery, isLongDistance, deliveryDist, isWalkIn);
             }
         }
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.COMPLETED, world, player, stack);
         OrderNpcManager.beginCompletedAnimation(world, player, orderId, npc, resolveCompletionAnimation(world, player, stack, nbt, npc));
         stack.shrink(1);
     }
@@ -502,19 +504,34 @@ public class TakeoutBagItem extends Item {
             }
         }
         String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
+        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.COMPLETED, world, player, stack);
         OrderNpcManager.despawnFor(world, player, orderId, OrderNpcManager.DespawnReason.COMPLETED);
         stack.shrink(1);
     }
 
     private static OrderNpcManager.CompletionAnimation resolveCompletionAnimation(ServerLevel world, Player player, ItemStack stack, CompoundTag nbt, Entity npc) {
-        boolean chairCustomer = npc instanceof cn.breezeth.ordertocook.entity.CustomerEntity customerEntity && customerEntity.isChairCustomer();
-        if (chairCustomer && stack.getItem() instanceof FoodPlateItem) {
-            boolean isEasterEggCustomer = npc instanceof cn.breezeth.ordertocook.entity.CustomerEntity customerEntity && customerEntity.isEasterEggCustomer();
-            double boomChance = isEasterEggCustomer ? 0.6D : 0.1D;
-            boolean useBoom = world.random.nextDouble() < boomChance;
-            if (npc instanceof cn.breezeth.ordertocook.entity.CustomerEntity customerEntity) {
-                prepareBoomBonus(world, player, nbt, customerEntity, useBoom);
+        if (npc instanceof LivingEntity living
+                && cn.breezeth.ordertocook.compat.TouhouLittleMaidCustomerCompat.isTouhouMaid(living)) {
+            boolean chairCustomer = OrderNpcManager.isChairCustomer(living);
+            if (chairCustomer && stack.getItem() instanceof FoodPlateItem) {
+                boolean useBoom = world.random.nextDouble() < 0.1D;
+                prepareTouhouBoomBonus(world, player, nbt, living, useBoom);
+                return useBoom ? OrderNpcManager.CompletionAnimation.EAT_BOOM : OrderNpcManager.CompletionAnimation.EAT_SCALE;
             }
+            OrderNpcManager.clearPendingTouhouBoomBonus(living.getUUID());
+            if (chairCustomer) {
+                return OrderNpcManager.CompletionAnimation.SIT_TAKE;
+            }
+            return OrderNpcManager.CompletionAnimation.STAND_TAKE;
+        }
+        if (!(npc instanceof cn.breezeth.ordertocook.entity.CustomerEntity ce)) {
+            return OrderNpcManager.CompletionAnimation.STAND_TAKE;
+        }
+        boolean chairCustomer = ce.isChairCustomer();
+        if (chairCustomer && stack.getItem() instanceof FoodPlateItem) {
+            double boomChance = ce.isEasterEggCustomer() ? 0.6D : 0.1D;
+            boolean useBoom = world.random.nextDouble() < boomChance;
+            prepareBoomBonus(world, player, nbt, ce, useBoom);
             return useBoom ? OrderNpcManager.CompletionAnimation.EAT_BOOM : OrderNpcManager.CompletionAnimation.EAT_SCALE;
         }
         if (chairCustomer) {
@@ -541,6 +558,36 @@ public class TakeoutBagItem extends Item {
         }
         String restaurantName = resolveRestaurantName(world, nbt, machineId);
         customerEntity.setPendingBoomBonus(player.getStringUUID(), machineId, isDelivery, isLongDistance, deliveryDist, isWalkIn, restaurantName, customerName, bonusCoin);
+    }
+
+    private static void prepareTouhouBoomBonus(ServerLevel world, Player player, CompoundTag nbt, LivingEntity npc, boolean useBoom) {
+        if (!useBoom || player == null) {
+            OrderNpcManager.clearPendingTouhouBoomBonus(npc.getUUID());
+            return;
+        }
+        int machineId = nbt.contains(ModConstants.NBT_MACHINE_ID) ? nbt.getInt(ModConstants.NBT_MACHINE_ID) : 0;
+        int bonusCoin = resolveBoomBonusCoin(world, machineId);
+        int orderType = nbt.contains(ModConstants.NBT_ORDER_TYPE) ? nbt.getInt(ModConstants.NBT_ORDER_TYPE) : 0;
+        int deliveryDist = orderType > 1 ? orderType : (nbt.contains(ModConstants.NBT_DELIVERY_DIST) ? nbt.getInt(ModConstants.NBT_DELIVERY_DIST) : 0);
+        boolean isDelivery = deliveryDist > 1;
+        boolean isWalkIn = orderType == 1;
+        boolean isLongDistance = nbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE);
+        String customerName = nbt.getString(ModConstants.NBT_CUSTOMER_NAME);
+        if (customerName == null || customerName.isBlank()) {
+            customerName = Component.translatable("keyword.ordertocook.customer").getString();
+        }
+        String restaurantName = resolveRestaurantName(world, nbt, machineId);
+        OrderNpcManager.setPendingTouhouBoomBonus(npc.getUUID(), new OrderNpcManager.PendingBoomBonusData(
+                player.getStringUUID(),
+                machineId,
+                isDelivery,
+                isLongDistance,
+                deliveryDist,
+                isWalkIn,
+                restaurantName,
+                customerName,
+                bonusCoin
+        ));
     }
 
     private static int resolveBoomBonusCoin(ServerLevel world, int machineId) {
@@ -663,6 +710,7 @@ public class TakeoutBagItem extends Item {
                             nbt.putBoolean("ExpiryExpiredNotified", true);
                     DataCompat.set(stack, nbt);
                             if (world instanceof ServerLevel sw) {
+                                cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.EXPIRED, sw, player, stack);
                                 String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
                                 OrderNpcManager.despawnFor(sw, player, orderId, OrderNpcManager.DespawnReason.EXPIRED);
                             }
@@ -730,6 +778,11 @@ public class TakeoutBagItem extends Item {
         int targetZ = posNbt.getInt("z");
         double distSq = Math.pow(player.getX() - targetX, 2) + Math.pow(player.getZ() - targetZ, 2);
         if (distSq > (48 * 48)) {
+            return;
+        }
+
+        if (!world.hasChunk(targetX >> 4, targetZ >> 4)
+                || !OrderNpcManager.acquireDeliverySpawnSearchBudget(world)) {
             return;
         }
 

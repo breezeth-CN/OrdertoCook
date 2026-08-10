@@ -9,11 +9,19 @@ import cn.breezeth.ordertocook.entity.SeatEntity;
 import cn.breezeth.ordertocook.client.render.MotorcycleRenderer;
 import cn.breezeth.ordertocook.client.render.feature.HelmetFeatureRenderer;
 import cn.breezeth.ordertocook.client.render.model.MotorcycleModel;
+import cn.breezeth.ordertocook.client.renderer.DishwasherRenderer;
+import cn.breezeth.ordertocook.client.renderer.FoodPlatePlacedRenderer;
+import cn.breezeth.ordertocook.client.renderer.OrderMachineRenderer;
+import cn.breezeth.ordertocook.client.renderer.RefrigeratorRenderer;
+import cn.breezeth.ordertocook.client.renderer.StoveRenderer;
+import cn.breezeth.ordertocook.client.renderer.TakeoutBagPlacedRenderer;
 import cn.breezeth.ordertocook.network.ModClientNetworking;
 import cn.breezeth.ordertocook.network.ModNetworking;
 import cn.breezeth.ordertocook.block.WashingTableBlock;
+import cn.breezeth.ordertocook.registry.ModBlockEntities;
 import cn.breezeth.ordertocook.registry.ModEntities;
 import cn.breezeth.ordertocook.registry.ModBlocks;
+import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.vehicle.motorcycle.MotorcycleEntity;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -29,6 +37,8 @@ import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
+import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
@@ -72,8 +82,10 @@ public final class OrderToCookClient implements ClientModInitializer {
     private static boolean uiHandToggleDown = false;
     private static boolean uiPauseDown = false;
     private static BlockPos activeWashPos = null;
-    private static long activeWashStartAge = -1L;
+    private static long activeWashStartMillis = -1L;
+    private static final long WASH_CONTINUE_MILLIS = 4_000L;
     private static boolean washBlockedUntilRelease = false;
+    private static BlockPos activeDishwasherPreviewPos = null;
     private static UiHandTarget uiHandTarget = UiHandTarget.BOTH;
     private static final int[] UI_KEYS = {
             GLFW.GLFW_KEY_KP_7,
@@ -92,6 +104,15 @@ public final class OrderToCookClient implements ClientModInitializer {
     public void onInitializeClient() {
         loadCalibration();
         EntityRendererRegistry.register(ModEntities.MOTORCYCLE, MotorcycleRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.DISHWASHER, context -> new DishwasherRenderer());
+        BlockEntityRendererFactories.register(ModBlockEntities.REFRIGERATOR, context -> new RefrigeratorRenderer());
+        BlockEntityRendererFactories.register(ModBlockEntities.STOVE, context -> new StoveRenderer());
+        BlockEntityRendererFactories.register(ModBlockEntities.ORDER_MACHINE, context -> new OrderMachineRenderer());
+        BlockEntityRendererFactories.register(ModBlockEntities.FOOD_PLATE_DISPLAY, context -> new FoodPlatePlacedRenderer());
+        BlockEntityRendererFactories.register(ModBlockEntities.TAKEOUT_BAG, context -> new TakeoutBagPlacedRenderer());
+        HandledScreens.register(cn.breezeth.ordertocook.registry.ModScreenHandlers.REFRIGERATOR_UPPER, cn.breezeth.ordertocook.screen.RefrigeratorScreen::new);
+        HandledScreens.register(cn.breezeth.ordertocook.registry.ModScreenHandlers.REFRIGERATOR_LOWER, cn.breezeth.ordertocook.screen.RefrigeratorScreen::new);
+        HandledScreens.register(cn.breezeth.ordertocook.registry.ModScreenHandlers.STOVE, cn.breezeth.ordertocook.screen.StoveScreen::new);
 
         EntityModelLayerRegistry.registerModelLayer(MotorcycleRenderer.LAYER, MotorcycleModel::getTexturedModelData);
 
@@ -180,12 +201,14 @@ public final class OrderToCookClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null || client.options == null) {
                 stopWashing(client, true);
+                clearDishwasherPreview(client);
                 resetRidingClientState();
                 return;
             }
 
             if (client.currentScreen != null) {
                 stopWashing(client, true);
+                clearDishwasherPreview(client);
                 return;
             }
             if (uiControlEnabled) {
@@ -195,6 +218,7 @@ public final class OrderToCookClient implements ClientModInitializer {
             }
 
             processWashingInput(client);
+            processDishwasherPreview(client);
 
             MotorcycleEntity motorcycle = MotorcycleEntity.fromVehicle(client.player.getVehicle());
             boolean chairSeat = isChairSeat(client.player);
@@ -285,7 +309,8 @@ public final class OrderToCookClient implements ClientModInitializer {
         pendingLightToggleTicks = -1;
         pendingLightTogglePitch = 1.0f;
         activeWashPos = null;
-        activeWashStartAge = -1L;
+        activeDishwasherPreviewPos = null;
+        activeWashStartMillis = -1L;
         washBlockedUntilRelease = false;
     }
 
@@ -335,6 +360,49 @@ public final class OrderToCookClient implements ClientModInitializer {
         return player != null && player.getVehicle() instanceof SeatEntity seat && seat.resolveParent() == null;
     }
 
+    private static void processDishwasherPreview(MinecraftClient client) {
+        BlockPos previewPos = findDishwasherPreviewTarget(client);
+        if (activeDishwasherPreviewPos != null && !activeDishwasherPreviewPos.equals(previewPos)) {
+            setDishwasherPreview(client, activeDishwasherPreviewPos, false);
+            activeDishwasherPreviewPos = null;
+        }
+        if (previewPos != null && !previewPos.equals(activeDishwasherPreviewPos)) {
+            setDishwasherPreview(client, previewPos, true);
+            activeDishwasherPreviewPos = previewPos;
+        }
+    }
+
+    private static BlockPos findDishwasherPreviewTarget(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.crosshairTarget == null || client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
+            return null;
+        }
+        if (!client.player.getMainHandStack().isOf(ModItems.DIRTY_PLATE) && !client.player.getOffHandStack().isOf(ModItems.DIRTY_PLATE)) {
+            return null;
+        }
+        BlockHitResult hitResult = (BlockHitResult) client.crosshairTarget;
+        BlockPos pos = hitResult.getBlockPos();
+        if (client.world.getBlockState(pos).getBlock() != ModBlocks.DISHWASHER) {
+            return null;
+        }
+        if (client.world.getBlockEntity(pos) instanceof cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity dishwasher && dishwasher.isIdleForPreview()) {
+            return pos;
+        }
+        return null;
+    }
+
+    private static void setDishwasherPreview(MinecraftClient client, BlockPos pos, boolean open) {
+        if (client.world != null && client.world.getBlockEntity(pos) instanceof cn.breezeth.ordertocook.block.entity.DishwasherBlockEntity dishwasher) {
+            dishwasher.setClientPreviewOpen(open);
+        }
+    }
+
+    private static void clearDishwasherPreview(MinecraftClient client) {
+        if (activeDishwasherPreviewPos != null) {
+            setDishwasherPreview(client, activeDishwasherPreviewPos, false);
+            activeDishwasherPreviewPos = null;
+        }
+    }
+
     private static void processWashingInput(MinecraftClient client) {
         if (client.player == null || client.options == null) {
             return;
@@ -352,7 +420,7 @@ public final class OrderToCookClient implements ClientModInitializer {
         }
 
         if (activeWashPos != null) {
-            if (client.player.age - activeWashStartAge >= 80L) {
+            if (System.currentTimeMillis() - activeWashStartMillis >= WASH_CONTINUE_MILLIS) {
                 BlockPos washPos = activeWashPos;
                 if (canContinueWashing(client, washPos)) {
                     beginWashing(client, washPos);
@@ -382,7 +450,7 @@ public final class OrderToCookClient implements ClientModInitializer {
             return;
         }
         activeWashPos = washPos;
-        activeWashStartAge = client.player.age;
+        activeWashStartMillis = System.currentTimeMillis();
         RiderRenderBridge.triggerWashStart(client.player);
         ModClientNetworking.sendRiderAnimation(ModNetworking.RIDER_ANIM_WASH_START, true);
         ClientPlayNetworking.send(new ModNetworking.StartWashingPayload(washPos));
@@ -420,7 +488,7 @@ public final class OrderToCookClient implements ClientModInitializer {
     private static void stopWashing(MinecraftClient client, boolean notifyServer) {
         if (activeWashPos == null || client.player == null) {
             activeWashPos = null;
-            activeWashStartAge = -1L;
+            activeWashStartMillis = -1L;
             return;
         }
         if (notifyServer) {
@@ -429,7 +497,7 @@ public final class OrderToCookClient implements ClientModInitializer {
         RiderRenderBridge.triggerWashStop(client.player);
         ModClientNetworking.sendRiderAnimation(ModNetworking.RIDER_ANIM_WASH_STOP, false);
         activeWashPos = null;
-        activeWashStartAge = -1L;
+        activeWashStartMillis = -1L;
     }
 
     private static void renderUiControlHud(DrawContext drawContext) {

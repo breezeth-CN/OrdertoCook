@@ -3,6 +3,7 @@ package cn.breezeth.ordertocook.block;
 import cn.breezeth.ordertocook.block.entity.WashingTableBlockEntity;
 import cn.breezeth.ordertocook.registry.ModItems;
 import cn.breezeth.ordertocook.registry.ModSounds;
+import net.minecraft.world.entity.player.Player;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -134,12 +135,20 @@ public class WashingTableBlock extends BaseEntityBlock {
     @Override
     public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean moved) {
         if (state.getBlock() != newState.getBlock() && !world.isClientSide) {
+            // Items drop in playerWillDestroy to prevent duplication when physical-structure movement moves blocks
+        }
+        super.onRemove(state, world, pos, newState, moved);
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level world, BlockPos pos, BlockState state, Player player) {
+        if (!world.isClientSide) {
             int plates = state.getValue(PLATES);
             if (plates > 0) {
                 Block.popResource(world, pos, new ItemStack(ModItems.DIRTY_PLATE.get(), plates));
             }
         }
-        super.onRemove(state, world, pos, newState, moved);
+        return super.playerWillDestroy(world, pos, state, player);
     }
 
     private static VoxelShape rotateShape(Direction from, Direction to, VoxelShape shape) {
@@ -154,3 +163,4 @@ public class WashingTableBlock extends BaseEntityBlock {
         return buffer[0];
     }
 }
+

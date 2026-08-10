@@ -1,5 +1,6 @@
 package cn.breezeth.ordertocook.registry;
 
+import cn.breezeth.ordertocook.advancement.DishwasherUpgradeCriterion;
 import cn.breezeth.ordertocook.advancement.ExpiredBagEatenCriterion;
 import cn.breezeth.ordertocook.advancement.OrderCompletedCriterion;
 import cn.breezeth.ordertocook.advancement.TotalCoinCriterion;
@@ -15,11 +16,13 @@ public class ModCriteria {
     public static final OrderCompletedCriterion ORDER_COMPLETED = new OrderCompletedCriterion();
     public static final TotalCoinCriterion TOTAL_COIN = new TotalCoinCriterion();
     public static final ExpiredBagEatenCriterion EXPIRED_BAG_EATEN = new ExpiredBagEatenCriterion();
+    public static final DishwasherUpgradeCriterion DISHWASHER_UPGRADE = new DishwasherUpgradeCriterion();
 
     static {
         TRIGGERS.register("order_completed", () -> ORDER_COMPLETED);
         TRIGGERS.register("total_coin", () -> TOTAL_COIN);
         TRIGGERS.register("expired_bag_eaten", () -> EXPIRED_BAG_EATEN);
+        TRIGGERS.register("dishwasher_upgrade", () -> DISHWASHER_UPGRADE);
     }
 
     public static void register(IEventBus modBus) {

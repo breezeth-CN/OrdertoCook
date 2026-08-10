@@ -177,8 +177,9 @@ public class OrderMachineScreenHandler extends AbstractContainerMenu {
                         CompoundTag dp = nbt.getCompound(ModConstants.NBT_DELIVERY_POS);
                         int tx = dp.getInt(ModConstants.NBT_X);
                         int tz = dp.getInt(ModConstants.NBT_Z);
-                        int dx = tx - be.getBlockPos().getX();
-                        int dz = tz - be.getBlockPos().getZ();
+                        net.minecraft.core.BlockPos origin = cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.toWorldPosition(player.level(), be.getBlockPos());
+                        int dx = tx - origin.getX();
+                        int dz = tz - origin.getZ();
                         int dist = (int) Math.round(Math.sqrt(dx * dx + dz * dz));
                         nbt.putInt(ModConstants.NBT_DELIVERY_DIST, dist);
                     }
@@ -186,6 +187,11 @@ public class OrderMachineScreenHandler extends AbstractContainerMenu {
                         nbt.putInt(ModConstants.NBT_ORDER_TYPE, 0);
                     }
                     DataCompat.set(stack, nbt);
+                    if (player.level() instanceof net.minecraft.server.level.ServerLevel lifecycleWorld) {
+                        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.ACCEPTED,
+                                lifecycleWorld, player, stack);
+                    }
                     boolean delivery = nbt.getBoolean("Delivery");
                     String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
                     if (!delivery && player.level() instanceof ServerLevel sw) {
@@ -211,3 +217,4 @@ public class OrderMachineScreenHandler extends AbstractContainerMenu {
         return (be.getLevel() instanceof net.minecraft.server.level.ServerLevel) ? be : null;
     }
 }
+

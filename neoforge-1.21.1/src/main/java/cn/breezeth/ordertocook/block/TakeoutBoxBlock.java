@@ -51,13 +51,26 @@ public class TakeoutBoxBlock extends BaseEntityBlock {
     @Override
     public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean moved) {
         if (state.getBlock() != newState.getBlock()) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            if (blockEntity instanceof TakeoutBoxBlockEntity) {
-                Containers.dropContents(world, pos, (TakeoutBoxBlockEntity)blockEntity);
-                world.updateNeighbourForOutputSignal(pos, this);
+            if (!cn.breezeth.ordertocook.api.PhysicalRestaurantCompatApi.isAssemblyMoving(pos)) {
+                BlockEntity blockEntity = world.getBlockEntity(pos);
+                if (blockEntity instanceof TakeoutBoxBlockEntity) {
+                    Containers.dropContents(world, pos, (TakeoutBoxBlockEntity)blockEntity);
+                    world.updateNeighbourForOutputSignal(pos, this);
+                }
             }
             super.onRemove(state, world, pos, newState, moved);
         }
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level world, BlockPos pos, BlockState state, Player player) {
+        if (!world.isClientSide) {
+            BlockEntity blockEntity = world.getBlockEntity(pos);
+            if (blockEntity instanceof TakeoutBoxBlockEntity) {
+                Containers.dropContents(world, pos, (TakeoutBoxBlockEntity)blockEntity);
+            }
+        }
+        return super.playerWillDestroy(world, pos, state, player);
     }
 
     @Nullable
@@ -149,3 +162,4 @@ public class TakeoutBoxBlock extends BaseEntityBlock {
         return InteractionResult.SUCCESS;
     }
 }
+

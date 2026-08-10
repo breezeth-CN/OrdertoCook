@@ -110,6 +110,8 @@ public class ModConfig {
     public boolean sdmShopCurrencyCompat = false;
     @Comment("SDM Economy currency key used when SDMShop currency compatibility is enabled.")
     public String sdmShopCurrencyKey = "basic_money";
+    @Comment("Enable Touhou Little Maid customer compatibility. Normal customers use Touhou Little Maid entities when the mod is installed. Easter egg customers keep OrderToCook's own customer model.")
+    public boolean touhouLittleMaidCustomerCompat = false;
 
     /*
      * ========== Food Filtering (Removed) ==========

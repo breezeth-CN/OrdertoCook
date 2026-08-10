@@ -105,12 +105,20 @@ public class PlateShelfBlock extends Block {
     @Override
     public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean moved) {
         if (state.getBlock() != newState.getBlock() && !world.isClientSide) {
+            // Items drop in playerWillDestroy to prevent duplication when physical-structure movement moves blocks
+        }
+        super.onRemove(state, world, pos, newState, moved);
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level world, BlockPos pos, BlockState state, net.minecraft.world.entity.player.Player player) {
+        if (!world.isClientSide) {
             int plates = state.getValue(PLATES);
             if (plates > 0) {
                 Block.popResource(world, pos, new ItemStack(ModItems.CLEAN_PLATE.get(), plates));
             }
         }
-        super.onRemove(state, world, pos, newState, moved);
+        return super.playerWillDestroy(world, pos, state, player);
     }
 
     private static VoxelShape rotateShape(Direction from, Direction to, VoxelShape shape) {
@@ -125,3 +133,4 @@ public class PlateShelfBlock extends Block {
         return buffer[0];
     }
 }
+

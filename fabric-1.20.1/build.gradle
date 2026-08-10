@@ -10,6 +10,10 @@ base {
     archivesName = localProps.getProperty("archives_base_name") ?: (project.hasProperty("archives_base_name") ? project.archives_base_name : "ordertocook")
 }
 repositories {
+exclusiveContent {
+    forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+    filter { includeGroup 'maven.modrinth' }
+}
 maven { url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
 maven { url = 'https://maven.aliyun.com/repository/public' }
 maven { url = 'https://mirrors.aliyun.com/maven/' }
@@ -55,6 +59,7 @@ modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     def mc = localProps.getProperty('minecraft_version') ?: '1.20.1'
     def gl = localProps.getProperty('geckolib_version') ?: '4.8.3'
     modImplementation "software.bernie.geckolib:geckolib-fabric-${mc}:${gl}"
+    modCompileOnly "maven.modrinth:jade:11.13.1+fabric"
     // 暂时注释掉JEI依赖，测试是否是JEI导致的问题
     // modImplementation "mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}"
     // modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
@@ -110,12 +115,11 @@ tasks.named("sourcesJar").configure {
 // 发布包与中间 jar 统一命名：ordertocook-<mod_version>-fabric1.20.jar（mc 小版本来自 minecraft_version）
 def modVer = localProps.getProperty("mod_version") ?: (project.hasProperty("mod_version") ? project.mod_version : project.version)
 def mcVer = localProps.getProperty("minecraft_version") ?: (project.hasProperty("minecraft_version") ? project.minecraft_version : "1.20.1")
-def mcMinor = mcVer.tokenize('.').take(2).join('.')
 tasks.withType(Jar).configureEach {
     if (name == 'jar') {
-        archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+        archiveFileName = "ordertocook-${modVer}-fabric${mcVer}.jar"
     }
 }
 tasks.named("remapJar").configure {
-    archiveFileName = "ordertocook-${modVer}-fabric${mcMinor}.jar"
+    archiveFileName = "ordertocook-${modVer}-fabric${mcVer}.jar"
 }

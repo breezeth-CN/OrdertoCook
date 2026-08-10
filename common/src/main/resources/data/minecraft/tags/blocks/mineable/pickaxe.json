@@ -2,6 +2,8 @@
   "replace": false,
   "values": [
     "ordertocook:order_machine",
-    "ordertocook:board"
+    "ordertocook:board",
+    "ordertocook:dishwasher",
+    "ordertocook:refrigerator"
   ]
 }

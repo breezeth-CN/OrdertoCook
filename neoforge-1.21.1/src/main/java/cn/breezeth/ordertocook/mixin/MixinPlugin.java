@@ -1,6 +1,7 @@
 package cn.breezeth.ordertocook.mixin;
 
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.LoadingModList;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.objectweb.asm.tree.ClassNode;
@@ -13,14 +14,17 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        ModList mods = ModList.get();
-        if (mods == null) {
-            tlmLoaded = false;
+        LoadingModList loadingMods = LoadingModList.get();
+        if (loadingMods != null) {
+            tlmLoaded = loadingMods.getModFileById("touhou_little_maid") != null
+                || loadingMods.getModFileById("touhou_little_maid_orihime") != null
+                || loadingMods.getModFileById("touhoulittlemaid_orihime") != null;
             return;
         }
-        tlmLoaded = mods.isLoaded("touhou_little_maid")
+        ModList mods = ModList.get();
+        tlmLoaded = mods != null && (mods.isLoaded("touhou_little_maid")
             || mods.isLoaded("touhou_little_maid_orihime")
-            || mods.isLoaded("touhoulittlemaid_orihime");
+            || mods.isLoaded("touhoulittlemaid_orihime"));
     }
 
     @Override
@@ -30,7 +34,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.equals("cn.breezeth.ordertocook.mixin.client.compat.touhoulittlemaid.EntityChairGetYawMixin")) {
+        if (mixinClassName.startsWith("cn.breezeth.ordertocook.mixin.client.compat.touhoulittlemaid.")) {
             return tlmLoaded;
         }
         return true;

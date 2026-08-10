@@ -17,6 +17,9 @@ public class ModItemGroups {
                 entries.add(ModItems.ORDER_MACHINE);
                 entries.add(ModItems.COUNTERTOP);
                 entries.add(ModItems.WASHINGTABLE);
+                entries.add(ModItems.DISHWASHER);
+                entries.add(ModItems.REFRIGERATOR);
+                entries.add(ModItems.STOVE);
                 entries.add(ModItems.TAKEOUT_BAG);
                 entries.add(ModItems.CHAIR);
                 entries.add(ModItems.SHELF);
@@ -27,6 +30,7 @@ public class ModItemGroups {
                 entries.add(ModItems.FOOD_PLATE);
                 entries.add(ModItems.MOTORCYCLE);
                 entries.add(ModItems.HELMET);
+                entries.add(ModItems.OTC_UPGRADE_BOX);
                 entries.add(ModItems.ORDER);
                 entries.add(ModItems.CHEF_COIN_1);
                 entries.add(ModItems.CHEF_COIN_5);

@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,half=lower": { "model": "ordertocook:block/refrigerator" },
+    "facing=east,half=lower": { "model": "ordertocook:block/refrigerator", "y": 90 },
+    "facing=south,half=lower": { "model": "ordertocook:block/refrigerator", "y": 180 },
+    "facing=west,half=lower": { "model": "ordertocook:block/refrigerator", "y": 270 },
+    "facing=north,half=upper": { "model": "ordertocook:block/refrigerator" },
+    "facing=east,half=upper": { "model": "ordertocook:block/refrigerator", "y": 90 },
+    "facing=south,half=upper": { "model": "ordertocook:block/refrigerator", "y": 180 },
+    "facing=west,half=upper": { "model": "ordertocook:block/refrigerator", "y": 270 }
+  }
+}

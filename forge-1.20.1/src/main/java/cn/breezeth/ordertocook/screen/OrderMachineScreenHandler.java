@@ -186,6 +186,11 @@ public class OrderMachineScreenHandler extends AbstractContainerMenu {
                         nbt.putInt(ModConstants.NBT_ORDER_TYPE, 0);
                     }
                     DataCompat.set(stack, nbt);
+                    if (player.level() instanceof net.minecraft.server.level.ServerLevel lifecycleWorld) {
+                        cn.breezeth.ordertocook.api.OrderLifecycleApi.emit(
+                                cn.breezeth.ordertocook.api.OrderLifecycleApi.Type.ACCEPTED,
+                                lifecycleWorld, player, stack);
+                    }
                     boolean delivery = nbt.getBoolean("Delivery");
                     String orderId = nbt.getString(ModConstants.NBT_ORDER_ID);
                     if (!delivery && player.level() instanceof ServerLevel sw) {

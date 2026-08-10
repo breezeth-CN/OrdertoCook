@@ -23,6 +23,7 @@ public final class ModClientNetworking {
         Identifier RESTAURANT_NAME_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "restaurant_name_s2c");
         Identifier VANILLA_ERA_FARES_CHRON_REQUIREMENTS_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "vanilla_era_fares_chron_requirements_s2c");
         Identifier RIDER_ANIM_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_s2c");
+        Identifier CUSTOM_MENU_SYNC_S2C = ModNetworking.CUSTOM_MENU_SYNC_S2C;
         ClientPlayNetworking.registerGlobalReceiver(PRESTIGE_QUERY_S2C, (client, handler, buf, responseSender) -> {
             int prestige = buf.readVarInt();
             client.execute(() -> {
@@ -65,6 +66,10 @@ public final class ModClientNetworking {
             int animType = buf.readVarInt();
             boolean animate = buf.readBoolean();
             client.execute(() -> applyRemoteRiderAnimation(client, uuid, animType, animate));
+        });
+        ClientPlayNetworking.registerGlobalReceiver(CUSTOM_MENU_SYNC_S2C, (client, handler, buf, responseSender) -> {
+            String json = buf.readString(32767);
+            client.execute(() -> cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(json));
         });
     }
 

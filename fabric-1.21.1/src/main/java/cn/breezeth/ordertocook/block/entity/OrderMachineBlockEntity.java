@@ -20,6 +20,10 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -35,12 +39,19 @@ import net.minecraft.block.Block;
 import cn.breezeth.ordertocook.config.ConfigManager;
 import cn.breezeth.ordertocook.util.DataCompat;
 import net.minecraft.component.type.FoodComponent;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, ImplementedInventory {
+public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, ImplementedInventory, GeoBlockEntity {
     private final DefaultedList<ItemStack> inventory = DefaultedList.ofSize(5, ItemStack.EMPTY);
     
     private int progress = 0;
@@ -69,6 +80,8 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     private int machineId = 0;
     private boolean isPlaced = true;
     private transient boolean oc$registeredPlacedSynced = false;
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private String lastRenderAnimation = "";
 
     protected final PropertyDelegate propertyDelegate;
     private int effectiveBenefitLevel = 0;
@@ -279,15 +292,33 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     }
 
     private void refreshOrders() {
+        long generationStartedNanos = System.nanoTime();
         inventory.clear();
         int slots = getUnlockedSlots(level);
+        int deliveryOrders = 0;
+        int longDistanceOrders = 0;
         if (this.world instanceof ServerWorld sw) {
             List<Item> menuFoods = getMenuFoodsForMachine(sw, this.pos);
             for (int i = 0; i < slots; i++) {
-                inventory.set(i, OrderGenerator.generateRandomOrder(sw, this.pos, level, menuFoods));
+                ItemStack generated = OrderGenerator.generateRandomOrder(sw, this.pos, level, menuFoods);
+                inventory.set(i, generated);
+                NbtCompound generatedNbt = DataCompat.copy(generated);
+                if (generatedNbt != null && generatedNbt.getBoolean(ModConstants.NBT_DELIVERY)) {
+                    deliveryOrders++;
+                    if (generatedNbt.getBoolean(ModConstants.NBT_IS_LONG_DISTANCE)) longDistanceOrders++;
+                }
+            }
+            if (ConfigManager.isDevModeEnabled()) {
+                double elapsedMs = (System.nanoTime() - generationStartedNanos) / 1_000_000.0D;
+                Text message = Text.literal(String.format(java.util.Locale.ROOT,
+                        "[OTC Dev] Order refresh: %d orders, %d delivery, %d long, %.3f ms",
+                        slots, deliveryOrders, longDistanceOrders, elapsedMs)).formatted(Formatting.GRAY);
+                sw.getPlayers(player -> player.squaredDistanceTo(this.pos.getX() + 0.5D, this.pos.getY() + 0.5D, this.pos.getZ() + 0.5D) <= 4096.0D)
+                        .forEach(player -> player.sendMessage(message, false));
             }
         }
         markDirty();
+        syncToClients();
         if (this.world != null) {
             this.world.playSound(null, this.pos, ModSounds.ORDER_REFRESH, SoundCategory.BLOCKS, 1.0f, 1.0f);
             BlockState state = this.world.getBlockState(this.pos);
@@ -297,9 +328,24 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
                     BlockState s1 = state.with(OrderMachineBlock.MODE, OrderMachineBlock.Mode.PRINTING).with(OrderMachineBlock.FRAME, 0);
                     sw.setBlockState(this.pos, s1, Block.NOTIFY_ALL);
                     sw.scheduleBlockTick(this.pos, block, OrderMachineBlock.BEAT_TICKS);
+                    spawnNewOrderSparkles(sw);
                 }
             }
         }
+    }
+
+    private void spawnNewOrderSparkles(ServerWorld sw) {
+        sw.spawnParticles(
+                ParticleTypes.END_ROD,
+                this.pos.getX() + 0.5,
+                this.pos.getY() + 0.85,
+                this.pos.getZ() + 0.5,
+                10,
+                0.22,
+                0.18,
+                0.22,
+                0.015
+        );
     }
 
     public static List<Item> getBoundBoardMenuFoods(ServerWorld sw, BlockPos machinePos) {
@@ -382,11 +428,8 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
         ArrayList<Item> list = new ArrayList<>();
         for (ItemStack s : be.getItems()) {
             if (s.isEmpty()) continue;
-            int nutrition = ConfigManager.getCustomMenuNutrition(s);
-            if (nutrition <= 0) {
-                FoodComponent fc = s.get(net.minecraft.component.DataComponentTypes.FOOD);
-                nutrition = (fc != null) ? fc.nutrition() : 0;
-            }
+            int nutrition = cn.breezeth.ordertocook.api.MenuFoodCompatApi.resolve(
+                    s, cn.breezeth.ordertocook.api.MenuFoodCompatApi.Purpose.ORDER_GENERATION).nutrition();
             if (nutrition <= 0) continue;
             list.add(s.getItem());
         }
@@ -552,8 +595,10 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
         active = target;
         if (!active) {
             inventory.clear();
+            setMachineRenderState(OrderMachineBlock.Mode.IDLE);
         }
         markDirty();
+        syncToClients();
         return true;
     }
 
@@ -591,12 +636,17 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     public void onOrderAccepted() {
         if (this.world == null || this.world.isClient) return;
         ServerWorld sw = (ServerWorld) this.world;
+        for (int i = 0; i < this.inventory.size(); i++) {
+            this.inventory.set(i, ItemStack.EMPTY);
+        }
+        markDirty();
         BlockState state = sw.getBlockState(this.pos);
         if (state.getBlock() instanceof OrderMachineBlock) {
             BlockState idle = state.with(OrderMachineBlock.MODE, OrderMachineBlock.Mode.IDLE)
                                    .with(OrderMachineBlock.FRAME, 0);
             sw.setBlockState(this.pos, idle, Block.NOTIFY_ALL);
         }
+        syncToClients();
     }
 
     public void recordAcceptedOrder(ServerPlayerEntity player, NbtCompound nbt) {
@@ -709,6 +759,80 @@ public class OrderMachineBlockEntity extends BlockEntity implements NamedScreenH
     public void forceRefresh() {
         refreshOrders();
         progress = 0;
+    }
+
+    public boolean hasPendingOrders() {
+        for (ItemStack stack : inventory) {
+            if (!stack.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean shouldRenderOrderLayer() {
+        return hasPendingOrders()
+                && getCachedState().contains(OrderMachineBlock.MODE)
+                && getCachedState().get(OrderMachineBlock.MODE) != OrderMachineBlock.Mode.IDLE;
+    }
+
+    public boolean shouldPlayNewOrderAnimation() {
+        return hasPendingOrders()
+                && getCachedState().contains(OrderMachineBlock.MODE)
+                && getCachedState().get(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.PRINTING;
+    }
+
+    public boolean shouldHoldNewOrderLastFrame() {
+        return hasPendingOrders()
+                && getCachedState().contains(OrderMachineBlock.MODE)
+                && getCachedState().get(OrderMachineBlock.MODE) == OrderMachineBlock.Mode.WAITING;
+    }
+
+    private void setMachineRenderState(OrderMachineBlock.Mode mode) {
+        if (!(this.world instanceof ServerWorld sw)) return;
+        BlockState state = sw.getBlockState(this.pos);
+        if (state.getBlock() instanceof OrderMachineBlock && state.contains(OrderMachineBlock.MODE) && state.contains(OrderMachineBlock.FRAME)) {
+            sw.setBlockState(this.pos, state.with(OrderMachineBlock.MODE, mode).with(OrderMachineBlock.FRAME, 0), Block.NOTIFY_ALL);
+        }
+    }
+
+    private void syncToClients() {
+        if (this.world instanceof ServerWorld sw) {
+            BlockState state = sw.getBlockState(this.pos);
+            sw.updateListeners(this.pos, state, state, Block.NOTIFY_ALL);
+        }
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> {
+            String animation = shouldPlayNewOrderAnimation() ? "neworder" : "";
+            if (!animation.equals(lastRenderAnimation)) {
+                lastRenderAnimation = animation;
+                state.getController().forceAnimationReset();
+            }
+            if (animation.isEmpty()) {
+                return PlayState.STOP;
+            }
+            state.setAndContinue(RawAnimation.begin().thenPlay(animation));
+            return PlayState.CONTINUE;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+
+    @Override
+    public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup) {
+        return createNbt(registryLookup);
+    }
+
+    @Nullable
+    @Override
+    public Packet<ClientPlayPacketListener> toUpdatePacket() {
+        return BlockEntityUpdateS2CPacket.create(this);
     }
 
     private int computeEffectiveBenefitLevel(ServerWorld sw) {

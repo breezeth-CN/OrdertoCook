@@ -15,6 +15,12 @@ base {
 }
 
 repositories {
+    flatDir { dirs 'libs' }
+    exclusiveContent {
+        forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+        forRepositories(fg.repository)
+        filter { includeGroup 'maven.modrinth' }
+    }
     maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
     maven { name = 'GeckoLib'; url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
     maven { name = 'BlameJared'; url = 'https://maven.blamejared.com' }
@@ -82,6 +88,13 @@ dependencies {
     minecraftLibrary "blue.endless:jankson:1.2.3"
     jarJar "blue.endless:jankson:[1.2.3,1.3)"
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${localProps.getProperty('minecraft_version')}:${localProps.getProperty('geckolib_version')}")
+    compileOnly fg.deobf('maven.modrinth:jade:11.13.1+forge')
+
+    // Optional local compatibility-test dependency. Forge production jars must be
+    // remapped before they can run in the official-mappings development client.
+    if (file('libs/touhoulittlemaid-1.5.3-forge+mc1.20.1.jar').exists()) {
+        runtimeOnly fg.deobf('local:touhoulittlemaid:1.5.3-forge+mc1.20.1')
+    }
 
     if (!providers.gradleProperty("ordertocook.skipJeiRuntime").map { it.toBoolean() }.getOrElse(false)) {
         runtimeOnly fg.deobf("mezz.jei:jei-${localProps.getProperty('minecraft_version')}-forge:${localProps.getProperty('jei_version')}")

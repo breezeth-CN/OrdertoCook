@@ -6,9 +6,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
-public class TakeoutBagBlockEntity extends BlockEntity {
+public class TakeoutBagBlockEntity extends BlockEntity implements GeoBlockEntity {
     private ItemStack bagStack = ItemStack.EMPTY;
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public TakeoutBagBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TAKEOUT_BAG.get(), pos, state);
@@ -39,5 +47,18 @@ public class TakeoutBagBlockEntity extends BlockEntity {
         } else {
             this.bagStack = ItemStack.EMPTY;
         }
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, state -> {
+            state.setAndContinue(RawAnimation.begin().thenPlay("maked"));
+            return PlayState.CONTINUE;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
     }
 }

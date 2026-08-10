@@ -14,6 +14,10 @@ base {
 }
 
 repositories {
+    exclusiveContent {
+        forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
     maven {
         name = 'NeoForge'
         url = 'https://maven.neoforged.net/releases'
@@ -57,11 +61,16 @@ neoForge {
         client {
             client()
             gameDirectory = project.file("runs/client")
+            // 开发环境默认开启 mixin 调试导出，会生成 runs/client/.mixin.out；
+            // 该目录位于游戏目录根下且被当作类路径扫描，下次启动会报
+            // "Invalid package name: .mixin.out.class..." 而崩溃，故关闭。
+            jvmArguments.add("-Dmixin.debug.export=false")
         }
         server {
             server()
             gameDirectory = project.file("runs/server")
             programArgument("--nogui")
+            jvmArguments.add("-Dmixin.debug.export=false")
         }
     }
 
@@ -81,6 +90,7 @@ dependencies {
     jarJar("blue.endless:jankson:1.2.3")
 
     implementation "software.bernie.geckolib:geckolib-neoforge-${localProps.getProperty('minecraft_version')}:${localProps.getProperty('geckolib_version')}"
+    compileOnly 'maven.modrinth:jade:15.10.5+neoforge'
     if (!providers.gradleProperty("ordertocook.skipJeiRuntime").map { it.toBoolean() }.getOrElse(false)) {
         runtimeOnly "mezz.jei:jei-${localProps.getProperty('minecraft_version')}-neoforge:${localProps.getProperty('jei_version')}"
     }

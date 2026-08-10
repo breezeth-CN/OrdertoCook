@@ -27,6 +27,11 @@ public class ModEntities {
                     .noSave()
                     .noSummon()
                     .build(ResourceLocation.fromNamespaceAndPath(ModConstants.MOD_ID, "seat").toString()));
+    public static final DeferredHolder<EntityType<?>, EntityType<SeatEntity>> CUSTOMER_SEAT = ENTITY_TYPES.register("customer_seat",
+            () -> EntityType.Builder.of(SeatEntity::new, MobCategory.MISC)
+                    .sized(0.5f, 0.5f)
+                    .noSummon()
+                    .build(ResourceLocation.fromNamespaceAndPath(ModConstants.MOD_ID, "customer_seat").toString()));
     public static final DeferredHolder<EntityType<?>, EntityType<CustomerEntity>> CUSTOMER = ENTITY_TYPES.register("customer",
             () -> EntityType.Builder.of(CustomerEntity::new, MobCategory.CREATURE)
                     .sized(0.6f, 1.95f)

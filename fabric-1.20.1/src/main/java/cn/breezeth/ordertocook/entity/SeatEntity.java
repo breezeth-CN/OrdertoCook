@@ -179,7 +179,9 @@ public class SeatEntity extends Entity {
 
     @Override
     protected boolean canAddPassenger(Entity passenger) {
-        return this.getFirstPassenger() == null && passenger instanceof PlayerEntity;
+        return this.getFirstPassenger() == null
+                && (passenger instanceof PlayerEntity
+                || passenger.getCommandTags().contains(cn.breezeth.ordertocook.core.OrderNpcManager.TAG_CHAIR_CUSTOMER));
     }
 
     @Override

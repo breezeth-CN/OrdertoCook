@@ -20,6 +20,8 @@ import cn.breezeth.ordertocook.block.entity.TakeoutBoxBlockEntity;
 public class TakeoutBoxScreenHandler extends ScreenHandler {
     private final Inventory inventory;
     private final PropertyDelegate propertyDelegate;
+    private final PlayerEntity player;
+    private String lastOrderSignature;
 
     private static boolean isExpiredOrder(net.minecraft.world.World world, ItemStack stack) {
         NbtCompound nbt = DataCompat.copy(stack);
@@ -34,7 +36,7 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
     }
 
     public TakeoutBoxScreenHandler(int syncId, PlayerInventory playerInventory) {
-        this(syncId, playerInventory, new SimpleInventory(13), new ArrayPropertyDelegate(2));
+        this(syncId, playerInventory, new SimpleInventory(13), new ArrayPropertyDelegate(22));
     }
 
     public TakeoutBoxScreenHandler(int syncId, PlayerInventory playerInventory, Inventory inventory, PropertyDelegate delegate) {
@@ -42,6 +44,7 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
         checkSize(inventory, 13);
         this.inventory = inventory;
         this.propertyDelegate = delegate;
+        this.player = playerInventory.player;
         inventory.onOpen(playerInventory.player);
 
         this.addSlot(new Slot(inventory, 0, 26, 20) {
@@ -66,6 +69,7 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
         addPlayerHotbar(playerInventory);
 
         addProperties(delegate);
+        this.lastOrderSignature = getOrderSignature();
     }
 
     public int getAvailablePackagingCount() {
@@ -76,6 +80,23 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
     public int getAvailablePlateCount() {
         if (this.propertyDelegate.size() <= 1) return 0;
         return this.propertyDelegate.get(1);
+    }
+
+    public int getIngredientStatus() {
+        return this.propertyDelegate.size() > 2 ? this.propertyDelegate.get(2) : 0;
+    }
+
+    public int getMissingIngredientCount() {
+        return this.propertyDelegate.size() > 3 ? Math.min(6, this.propertyDelegate.get(3)) : 0;
+    }
+
+    public int getMissingIngredientId(int index) { return this.propertyDelegate.get(4 + index * 3); }
+    public int getMissingIngredientRequired(int index) { return this.propertyDelegate.get(5 + index * 3); }
+    public int getMissingIngredientAvailable(int index) { return this.propertyDelegate.get(6 + index * 3); }
+
+    public boolean isQueryButtonVisible(net.minecraft.world.World world) {
+        ItemStack stack = inventory.getStack(0);
+        return !stack.isEmpty() && stack.isOf(ModItems.ORDER) && !isExpiredOrder(world, stack);
     }
 
     @Override
@@ -126,7 +147,7 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
         if (id == 0) {
             if (player.getWorld().isClient) return true;
             if (inventory instanceof TakeoutBoxBlockEntity be) {
-                be.tryPackOrder(player);
+                cn.breezeth.ordertocook.api.CountertopAutomationApi.execute(player.getWorld(), be.getPos(), cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PACK, player, false);
                 be.refreshAvailableCounts();
             }
             return true;
@@ -134,11 +155,36 @@ public class TakeoutBoxScreenHandler extends ScreenHandler {
         if (id == 1) {
             if (player.getWorld().isClient) return true;
             if (inventory instanceof TakeoutBoxBlockEntity be) {
-                be.tryPlateOrder(player);
+                cn.breezeth.ordertocook.api.CountertopAutomationApi.execute(player.getWorld(), be.getPos(), cn.breezeth.ordertocook.api.CountertopAutomationApi.Action.PLATE, player, false);
                 be.refreshAvailableCounts();
             }
             return true;
         }
+        if (id == 2) {
+            if (!player.getWorld().isClient && inventory instanceof TakeoutBoxBlockEntity be) {
+                be.refreshIngredientStatus(player, true);
+            }
+            return true;
+        }
         return false;
+    }
+
+    @Override
+    public void sendContentUpdates() {
+        String signature = getOrderSignature();
+        if (!signature.equals(lastOrderSignature)) {
+            lastOrderSignature = signature;
+            if (!player.getWorld().isClient && inventory instanceof TakeoutBoxBlockEntity be) {
+                be.refreshIngredientStatus(player, false);
+            }
+        }
+        super.sendContentUpdates();
+    }
+
+    private String getOrderSignature() {
+        ItemStack stack = inventory.getStack(0);
+        if (stack.isEmpty() || !stack.isOf(ModItems.ORDER)) return "";
+        NbtCompound nbt = DataCompat.copy(stack);
+        return nbt == null ? "invalid" : nbt.toString();
     }
 }

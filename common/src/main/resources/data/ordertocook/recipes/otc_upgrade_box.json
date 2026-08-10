@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " D ",
+    "BCB",
+    "BAB"
+  ],
+  "key": {
+    "A": {
+      "item": "ordertocook:chef_coin_100"
+    },
+    "B": {
+      "item": "minecraft:gold_ingot"
+    },
+    "C": {
+      "item": "minecraft:redstone_block"
+    },
+    "D": {
+      "item": "minecraft:chain"
+    }
+  },
+  "result": {
+    "item": "ordertocook:otc_upgrade_box",
+    "count": 1
+  }
+}
