@@ -23,7 +23,6 @@ public final class ModClientNetworking {
         Identifier RESTAURANT_NAME_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "restaurant_name_s2c");
         Identifier VANILLA_ERA_FARES_CHRON_REQUIREMENTS_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "vanilla_era_fares_chron_requirements_s2c");
         Identifier RIDER_ANIM_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_s2c");
-        Identifier CUSTOM_MENU_SYNC_S2C = ModNetworking.CUSTOM_MENU_SYNC_S2C;
         ClientPlayNetworking.registerGlobalReceiver(PRESTIGE_QUERY_S2C, (client, handler, buf, responseSender) -> {
             int prestige = buf.readVarInt();
             client.execute(() -> {
@@ -67,10 +66,27 @@ public final class ModClientNetworking {
             boolean animate = buf.readBoolean();
             client.execute(() -> applyRemoteRiderAnimation(client, uuid, animType, animate));
         });
-        ClientPlayNetworking.registerGlobalReceiver(CUSTOM_MENU_SYNC_S2C, (client, handler, buf, responseSender) -> {
-            String json = buf.readString(32767);
-            client.execute(() -> cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(json));
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CUSTOM_MENU_SYNC_MANIFEST_S2C, (client, handler, buf, responseSender) -> {
+            String hash=buf.readString(64); int raw=buf.readVarInt(), compressed=buf.readVarInt(), chunks=buf.readVarInt(); boolean unchanged=buf.readBoolean(), failed=buf.readBoolean();
+            client.execute(() -> CustomMenuSyncState.manifest(hash,raw,compressed,chunks,unchanged,failed));
         });
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CUSTOM_MENU_SYNC_CHUNK_S2C, (client, handler, buf, responseSender) -> {
+            String hash=buf.readString(64); int index=buf.readVarInt(); byte[] data=buf.readByteArray(CustomMenuSyncCodec.CHUNK_SIZE);
+            client.execute(() -> CustomMenuSyncState.chunk(hash,index,data,cn.breezeth.ordertocook.config.ConfigManager::applySyncedCustomMenuItems));
+        });
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CUSTOM_MENU_INVALIDATED_S2C, (client, handler, buf, responseSender) -> {
+            String hash=buf.readString(64);
+            client.execute(() -> { CustomMenuSyncState.invalidate(hash); if(client.currentScreen instanceof cn.breezeth.ordertocook.screen.BoardScreen || client.currentScreen instanceof cn.breezeth.ordertocook.screen.OrderMachineScreen) requestCustomMenuSync(); });
+        });
+    }
+
+    public static boolean requestCustomMenuSync() {
+        MinecraftClient client=MinecraftClient.getInstance();
+        if(client.getNetworkHandler()==null) return false;
+        PacketByteBuf out=new PacketByteBuf(Unpooled.buffer());
+        out.writeString(CustomMenuSyncState.beginRequest(),64);
+        ClientPlayNetworking.send(ModNetworking.CUSTOM_MENU_SYNC_REQUEST_C2S,out);
+        return true;
     }
 
     public static boolean sendPrestigeQuery() {

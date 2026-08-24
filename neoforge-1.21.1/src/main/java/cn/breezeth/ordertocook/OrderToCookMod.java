@@ -44,11 +44,13 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.EntityMountEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -73,20 +75,24 @@ public class OrderToCookMod {
         ModCriteria.register(modBus);
         modBus.addListener(this::registerAttributes);
         modBus.addListener(ModNetworking::registerPayloadHandlers);
+		modBus.addListener(this::registerCapabilities);
+		if (ModList.get().isLoaded("touhou_little_maid")) {
+			cn.breezeth.ordertocook.compat.touhoulittlemaid.RefrigeratorWirelessIOBinding.register();
+		}
 		NpcNames.init();
         NeoForge.EVENT_BUS.addListener(this::onEntityInteract);
         NeoForge.EVENT_BUS.addListener(this::onBlockBreak);
         NeoForge.EVENT_BUS.addListener(this::onLevelTick);
         NeoForge.EVENT_BUS.addListener(this::onServerTick);
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, EntityMountEvent.class, this::onManagedMaidMount);
 	}
 
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            ModNetworking.sendCustomMenuSync(player);
-        }
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.REFRIGERATOR.get(),
+                (refrigerator, side) -> refrigerator.getAutomationInventory());
     }
 
     private void onManagedMaidMount(EntityMountEvent event) {

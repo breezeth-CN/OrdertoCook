@@ -22,7 +22,6 @@ import cn.breezeth.ordertocook.registry.ModSounds;
 import cn.breezeth.ordertocook.command.ModCommands;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
@@ -66,7 +65,6 @@ public class OrderToCookMod implements ModInitializer {
         ModCriteria.register();
 		ModNetworking.registerPayloadTypes();
 		ModNetworking.registerServerReceivers();
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> ModNetworking.sendCustomMenuSync(handler.player));
         NpcNames.init();
         ModCommands.register();
 

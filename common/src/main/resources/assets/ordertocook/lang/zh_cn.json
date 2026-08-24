@@ -232,6 +232,8 @@
   "container.ordertocook.refrigerator_upper": "冰箱上层",
   "container.ordertocook.refrigerator_lower": "冰箱下层",
   "screen.ordertocook.refrigerator.sort_tooltip": "一键整理",
+  "screen.ordertocook.custom_menu.syncing": "正在同步自定义菜单 %s%%",
+  "screen.ordertocook.custom_menu.failed": "自定义菜单同步失败，请重新打开界面",
   "jade.ordertocook.packaging_shelf.leather": "皮革：%1$s/%2$s",
   "jade.ordertocook.plate_shelf.clean_plates": "干净餐盘：%1$s/%2$s",
   "jade.ordertocook.washing_table.dirty_plates": "脏餐盘：%1$s/%2$s",

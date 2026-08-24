@@ -32,6 +32,7 @@ public class OrderMachineScreen extends HandledScreen<OrderMachineScreenHandler>
     @Override
     protected void init() {
         super.init();
+        cn.breezeth.ordertocook.network.ModClientNetworking.requestCustomMenuSync();
         cn.breezeth.ordertocook.compat.JeiCompat.ensureGuiHandlersRegistered();
         cn.breezeth.ordertocook.network.ModClientNetworking.sendRestaurantNameQuery();
         int x = (width - backgroundWidth) / 2;
@@ -183,6 +184,14 @@ public class OrderMachineScreen extends HandledScreen<OrderMachineScreenHandler>
             }
         }
         drawMouseoverTooltip(context, mouseX, mouseY);
+        renderCustomMenuSync(context);
+    }
+
+    private void renderCustomMenuSync(DrawContext context) {
+        var state=cn.breezeth.ordertocook.network.CustomMenuSyncState.status();
+        if(state!=cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.SYNCING&&state!=cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.FAILED)return;
+        Text text=state==cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.FAILED?Text.translatable("screen.ordertocook.custom_menu.failed"):Text.translatable("screen.ordertocook.custom_menu.syncing",cn.breezeth.ordertocook.network.CustomMenuSyncState.percent());
+        context.fill(0,0,width,height,0x99000000);context.drawCenteredTextWithShadow(textRenderer,text,width/2,height/2,0xFFFFFF);
     }
 
     public int oc$getGuiLeft() {

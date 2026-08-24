@@ -47,9 +47,10 @@ public final class ModClientNetworking {
         });
     }
 
-    public static void handleCustomMenuSync(ModNetworking.CustomMenuSyncS2CPayload payload) {
-        cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(payload.json());
-    }
+    public static void handleCustomMenuSyncManifest(ModNetworking.CustomMenuSyncManifestS2CPayload p){Minecraft.getInstance().execute(()->CustomMenuSyncState.manifest(p.hash(),p.rawSize(),p.compressedSize(),p.chunks(),p.unchanged(),p.failed()));}
+    public static void handleCustomMenuSyncChunk(ModNetworking.CustomMenuSyncChunkS2CPayload p){Minecraft.getInstance().execute(()->CustomMenuSyncState.chunk(p.hash(),p.index(),p.data(),cn.breezeth.ordertocook.config.ConfigManager::applySyncedCustomMenuItems));}
+    public static void handleCustomMenuInvalidated(ModNetworking.CustomMenuInvalidatedS2CPayload p){Minecraft client=Minecraft.getInstance();client.execute(()->{CustomMenuSyncState.invalidate(p.hash());if(client.screen instanceof cn.breezeth.ordertocook.screen.BoardScreen||client.screen instanceof cn.breezeth.ordertocook.screen.OrderMachineScreen)requestCustomMenuSync();});}
+    public static boolean requestCustomMenuSync(){Minecraft client=Minecraft.getInstance();if(client.getConnection()==null)return false;PacketDistributor.sendToServer(new ModNetworking.CustomMenuSyncRequestC2SPayload(CustomMenuSyncState.beginRequest()));return true;}
 
     public static void handleRiderAnim(ModNetworking.RiderAnimS2CPayload payload) {
         Minecraft client = Minecraft.getInstance();

@@ -34,7 +34,10 @@ public final class ModNetworking {
     private static final Identifier RIDER_SOUND_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_sound_c2s");
     private static final Identifier RIDER_ANIM_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_c2s");
     private static final Identifier RIDER_ANIM_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "rider_anim_s2c");
-    public static final Identifier CUSTOM_MENU_SYNC_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_sync_s2c");
+    public static final Identifier CUSTOM_MENU_SYNC_REQUEST_C2S = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_sync_request_c2s");
+    public static final Identifier CUSTOM_MENU_SYNC_MANIFEST_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_sync_manifest_s2c");
+    public static final Identifier CUSTOM_MENU_SYNC_CHUNK_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_sync_chunk_s2c");
+    public static final Identifier CUSTOM_MENU_INVALIDATED_S2C = new Identifier(cn.breezeth.ordertocook.core.ModConstants.MOD_ID, "custom_menu_invalidated_s2c");
     public static final int RIDER_SOUND_HORN = 1;
     public static final int RIDER_SOUND_CHAIR_AMBIENT = 2;
     public static final int RIDER_SOUND_CHAIR_TRADE = 3;
@@ -65,6 +68,10 @@ public final class ModNetworking {
     }
 
     public static void registerServerReceivers() {
+        ServerPlayNetworking.registerGlobalReceiver(CUSTOM_MENU_SYNC_REQUEST_C2S, (server, player, handler, buf, responseSender) -> {
+            String clientHash = buf.readString(64);
+            server.execute(() -> sendCustomMenuSync(player, clientHash));
+        });
         ServerPlayNetworking.registerGlobalReceiver(PRESTIGE_QUERY_C2S, (server, player, handler, buf, responseSender) -> {
             int prestige = PrestigeManager.getPlayerPrestige(player);
             PacketByteBuf out = new PacketByteBuf(Unpooled.buffer());
@@ -289,15 +296,45 @@ public final class ModNetworking {
         }
     }
 
-    public static void sendCustomMenuSync(ServerPlayerEntity player) {
-        PacketByteBuf out = new PacketByteBuf(Unpooled.buffer());
-        out.writeString(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson(), 32767);
-        ServerPlayNetworking.send(player, CUSTOM_MENU_SYNC_S2C, out);
+    public static void sendCustomMenuSync(ServerPlayerEntity player, String clientHash) {
+        try {
+            var prepared = CustomMenuSyncServerCache.prepare(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson());
+            boolean unchanged = prepared.hash().equals(clientHash);
+            PacketByteBuf manifest = new PacketByteBuf(Unpooled.buffer());
+            manifest.writeString(prepared.hash(), 64);
+            manifest.writeVarInt(prepared.rawSize());
+            manifest.writeVarInt(prepared.compressed().length);
+            manifest.writeVarInt(unchanged ? 0 : prepared.chunkCount());
+            manifest.writeBoolean(unchanged);
+            manifest.writeBoolean(false);
+            ServerPlayNetworking.send(player, CUSTOM_MENU_SYNC_MANIFEST_S2C, manifest);
+            if (!unchanged) for (int i = 0; i < prepared.chunkCount(); i++) {
+                PacketByteBuf chunk = new PacketByteBuf(Unpooled.buffer());
+                chunk.writeString(prepared.hash(), 64);
+                chunk.writeVarInt(i);
+                chunk.writeByteArray(prepared.chunk(i));
+                ServerPlayNetworking.send(player, CUSTOM_MENU_SYNC_CHUNK_S2C, chunk);
+            }
+        } catch (java.io.IOException error) {
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.error("Failed to prepare custom menu sync", error);
+            PacketByteBuf manifest = new PacketByteBuf(Unpooled.buffer());
+            manifest.writeString("0".repeat(64), 64);
+            manifest.writeVarInt(0); manifest.writeVarInt(0); manifest.writeVarInt(0);
+            manifest.writeBoolean(false); manifest.writeBoolean(true);
+            ServerPlayNetworking.send(player, CUSTOM_MENU_SYNC_MANIFEST_S2C, manifest);
+        }
     }
 
     public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            sendCustomMenuSync(player);
+        try {
+            String hash = CustomMenuSyncServerCache.hash(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson());
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                PacketByteBuf out = new PacketByteBuf(Unpooled.buffer());
+                out.writeString(hash, 64);
+                ServerPlayNetworking.send(player, CUSTOM_MENU_INVALIDATED_S2C, out);
+            }
+        } catch (java.io.IOException error) {
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.error("Failed to invalidate custom menu sync", error);
         }
     }
 

@@ -44,11 +44,11 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.event.entity.EntityMountEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -77,21 +77,17 @@ public class OrderToCookMod {
         ModCriteria.register(modBus);
         modBus.addListener(this::registerAttributes);
         ModNetworking.register();
+		if (ModList.get().isLoaded("touhou_little_maid")) {
+			cn.breezeth.ordertocook.compat.touhoulittlemaid.RefrigeratorWirelessIOBinding.register();
+		}
 		NpcNames.init();
         MinecraftForge.EVENT_BUS.addListener(this::onEntityInteract);
         MinecraftForge.EVENT_BUS.addListener(this::onBlockBreak);
         MinecraftForge.EVENT_BUS.addListener(this::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, EntityMountEvent.class, this::onManagedMaidMount);
 	}
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            ModNetworking.sendCustomMenuSync(player);
-        }
-    }
 
     private void onManagedMaidMount(EntityMountEvent event) {
         if (!event.isMounting() || !event.getEntityMounting().level().isClientSide) return;

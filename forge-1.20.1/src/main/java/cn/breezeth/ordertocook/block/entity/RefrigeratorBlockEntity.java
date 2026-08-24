@@ -4,6 +4,7 @@ import cn.breezeth.ordertocook.config.ConfigManager;
 import cn.breezeth.ordertocook.registry.ModBlockEntities;
 import cn.breezeth.ordertocook.screen.RefrigeratorScreenHandler;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -32,6 +33,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoBlockEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -55,6 +60,7 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
     private final NonNullList<ItemStack> lowerInventory = NonNullList.withSize(LOWER_SIZE, ItemStack.EMPTY);
     private final RefrigeratorContainer upperContainer = new RefrigeratorContainer(true, upperInventory);
     private final RefrigeratorContainer lowerContainer = new RefrigeratorContainer(false, lowerInventory);
+    private LazyOptional<IItemHandler> automationInventory = createAutomationInventory();
     private final Set<UUID> upperViewers = new HashSet<>();
     private final Set<UUID> lowerViewers = new HashSet<>();
 
@@ -65,6 +71,8 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
     private int lastLowerState = -1;
     private int upperCloseTicks = 0;
     private int lowerCloseTicks = 0;
+    private long upperAutomationCloseAt = -1L;
+    private long lowerAutomationCloseAt = -1L;
 
     public RefrigeratorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.REFRIGERATOR.get(), pos, state);
@@ -126,6 +134,54 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
             }
         }
         return result;
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction side) {
+        if (capability == ForgeCapabilities.ITEM_HANDLER) {
+            return automationInventory.cast();
+        }
+        return super.getCapability(capability, side);
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        automationInventory.invalidate();
+    }
+
+    @Override
+    public void reviveCaps() {
+        super.reviveCaps();
+        automationInventory = createAutomationInventory();
+    }
+
+    private LazyOptional<IItemHandler> createAutomationInventory() {
+        return LazyOptional.of(() -> new RefrigeratorAutomationItemHandler(this));
+    }
+
+    public boolean canOpenByPlayer(Player player) {
+        return upperContainer.stillValid(player);
+    }
+
+    public boolean hasViewers() {
+        return !upperViewers.isEmpty() || !lowerViewers.isEmpty();
+    }
+
+    NonNullList<ItemStack> automationItems(boolean upper) {
+        return upper ? upperInventory : lowerInventory;
+    }
+
+    void onAutomationAccess(boolean upper) {
+        if (level == null || level.isClientSide || isRemoved()) return;
+        boolean wasActive = automationActive(upper);
+        if (upper) upperAutomationCloseAt = level.getGameTime() + 40L;
+        else lowerAutomationCloseAt = level.getGameTime() + 40L;
+        if (!wasActive && (upper ? upperViewers : lowerViewers).isEmpty()) playOpenAnimation(upper);
+    }
+
+    private boolean automationActive(boolean upper) {
+        return (upper ? upperAutomationCloseAt : lowerAutomationCloseAt) >= 0L;
     }
 
     public int getOccupiedSlotCount(boolean upper) {
@@ -197,6 +253,15 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
             return;
         }
         boolean changed = false;
+        long now = level.getGameTime();
+        if (upperAutomationCloseAt >= 0L && now >= upperAutomationCloseAt) {
+            upperAutomationCloseAt = -1L;
+            if (upperViewers.isEmpty()) playCloseAnimation(true);
+        }
+        if (lowerAutomationCloseAt >= 0L && now >= lowerAutomationCloseAt) {
+            lowerAutomationCloseAt = -1L;
+            if (lowerViewers.isEmpty()) playCloseAnimation(false);
+        }
         if (upperState == 2 && upperCloseTicks > 0 && --upperCloseTicks <= 0) {
             upperState = 0;
             lastUpperState = -1;
@@ -514,7 +579,7 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
                 return;
             }
             Set<UUID> viewers = upper ? upperViewers : lowerViewers;
-            if (viewers.add(player.getUUID()) && viewers.size() == 1) {
+            if (viewers.add(player.getUUID()) && viewers.size() == 1 && !automationActive(upper)) {
                 playOpenAnimation(upper);
             }
         }
@@ -525,7 +590,7 @@ public final class RefrigeratorBlockEntity extends BlockEntity implements GeoBlo
                 return;
             }
             Set<UUID> viewers = upper ? upperViewers : lowerViewers;
-            if (viewers.remove(player.getUUID()) && viewers.isEmpty()) {
+            if (viewers.remove(player.getUUID()) && viewers.isEmpty() && !automationActive(upper)) {
                 playCloseAnimation(upper);
             }
         }

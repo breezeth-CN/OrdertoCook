@@ -54,6 +54,7 @@ public class BoardScreen extends AbstractContainerScreen<BoardScreenHandler> {
     protected void init() {
         super.init();
         cn.breezeth.ordertocook.compat.JeiCompat.ensureGuiHandlersRegistered();
+        cn.breezeth.ordertocook.network.ModClientNetworking.requestCustomMenuSync();
         updateButtonPosition();
     }
 
@@ -261,7 +262,10 @@ public class BoardScreen extends AbstractContainerScreen<BoardScreenHandler> {
         graphics.flush();
         renderNutritionCounts(graphics, mouseX, mouseY);
         renderTooltips(graphics, mouseX, mouseY);
+        renderCustomMenuSync(graphics);
     }
+
+    private void renderCustomMenuSync(GuiGraphics graphics){var state=cn.breezeth.ordertocook.network.CustomMenuSyncState.status();if(state!=cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.SYNCING&&state!=cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.FAILED)return;Component text=state==cn.breezeth.ordertocook.network.CustomMenuSyncState.Status.FAILED?Component.translatable("screen.ordertocook.custom_menu.failed"):Component.translatable("screen.ordertocook.custom_menu.syncing",cn.breezeth.ordertocook.network.CustomMenuSyncState.percent());graphics.fill(0,0,width,height,0x99000000);graphics.drawCenteredString(font,text,width/2,height/2,0xFFFFFF);}
 
     private void renderNutritionCounts(GuiGraphics graphics, int mouseX, int mouseY) {
         int startIndex = scrollOffset * COLS;

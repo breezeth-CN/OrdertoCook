@@ -45,8 +45,9 @@ public final class ModClientNetworking {
                 LAST_OPEN_SCREEN_OWNER = payload.owner();
             });
         });
-        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CustomMenuSyncS2CPayload.ID, (payload, context) ->
-                context.client().execute(() -> cn.breezeth.ordertocook.config.ConfigManager.applySyncedCustomMenuItems(payload.json())));
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CustomMenuSyncManifestS2CPayload.ID,(p,c)->c.client().execute(()->CustomMenuSyncState.manifest(p.hash(),p.rawSize(),p.compressedSize(),p.chunks(),p.unchanged(),p.failed())));
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CustomMenuSyncChunkS2CPayload.ID,(p,c)->c.client().execute(()->CustomMenuSyncState.chunk(p.hash(),p.index(),p.data(),cn.breezeth.ordertocook.config.ConfigManager::applySyncedCustomMenuItems)));
+        ClientPlayNetworking.registerGlobalReceiver(ModNetworking.CustomMenuInvalidatedS2CPayload.ID,(p,c)->c.client().execute(()->{CustomMenuSyncState.invalidate(p.hash());if(c.client().currentScreen instanceof cn.breezeth.ordertocook.screen.BoardScreen||c.client().currentScreen instanceof cn.breezeth.ordertocook.screen.OrderMachineScreen)requestCustomMenuSync();}));
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.RiderAnimS2CPayload.ID, (payload, context) ->
                 context.client().execute(() -> applyRemoteRiderAnimation(context.client(), payload.playerUuid(), payload.animType(), payload.animate())));
     }
@@ -57,6 +58,8 @@ public final class ModClientNetworking {
         ClientPlayNetworking.send(ModNetworking.PrestigeQueryC2SPayload.INSTANCE);
         return true;
     }
+
+    public static boolean requestCustomMenuSync(){MinecraftClient client=MinecraftClient.getInstance();if(client.getNetworkHandler()==null)return false;ClientPlayNetworking.send(new ModNetworking.CustomMenuSyncRequestC2SPayload(CustomMenuSyncState.beginRequest()));return true;}
 
     public static boolean sendRestaurantRankingQuery() {
         MinecraftClient client = MinecraftClient.getInstance();

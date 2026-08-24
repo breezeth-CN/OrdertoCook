@@ -84,6 +84,16 @@ neoForge {
     }
 }
 
+// 启动前清理游戏目录内残留的 mixin 调试导出目录（.mixin.out 在类路径上会导致启动崩溃）
+["runClient", "runServer"].each { runTaskName ->
+    tasks.named(runTaskName).configure {
+        doFirst {
+            def gameDir = runTaskName == "runClient" ? "runs/client" : "runs/server"
+            project.delete(project.file("${gameDir}/.mixin.out"))
+        }
+    }
+}
+
 dependencies {
     implementation project(':common')
     implementation "blue.endless:jankson:1.2.3"
@@ -91,6 +101,18 @@ dependencies {
 
     implementation "software.bernie.geckolib:geckolib-neoforge-${localProps.getProperty('minecraft_version')}:${localProps.getProperty('geckolib_version')}"
     compileOnly 'maven.modrinth:jade:15.10.5+neoforge'
+    def localMaidJar = rootProject.file('.breezeth/dependencies/touhoulittlemaid-1.5.3-neoforge+mc1.21.1.jar')
+    if (localMaidJar.exists()) {
+        compileOnly files(localMaidJar)
+        if (!providers.gradleProperty('withoutMaid').isPresent()) {
+            runtimeOnly files(localMaidJar)
+        }
+    } else {
+        compileOnly 'maven.modrinth:touhou-little-maid:1.5.3-neoforge+mc1.21.1'
+        if (!providers.gradleProperty('withoutMaid').isPresent()) {
+            runtimeOnly 'maven.modrinth:touhou-little-maid:1.5.3-neoforge+mc1.21.1'
+        }
+    }
     if (!providers.gradleProperty("ordertocook.skipJeiRuntime").map { it.toBoolean() }.getOrElse(false)) {
         runtimeOnly "mezz.jei:jei-${localProps.getProperty('minecraft_version')}-neoforge:${localProps.getProperty('jei_version')}"
     }

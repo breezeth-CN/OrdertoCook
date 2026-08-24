@@ -38,6 +38,7 @@ replay_*.log
 
 # build artifacts / local test outputs
 ordertocook-sable-neoforge-1.21.1/
+ordertocook-maid-fridge-compat-neoforge-1.21.1/
 _disabled_runtime_artifacts_for_ordertocook_test/
 forge-1.20.1/libs/
 test-builds/

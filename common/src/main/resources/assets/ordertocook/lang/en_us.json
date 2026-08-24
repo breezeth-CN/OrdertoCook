@@ -229,6 +229,8 @@
   "container.ordertocook.refrigerator_upper": "Refrigerator Upper Compartment",
   "container.ordertocook.refrigerator_lower": "Refrigerator Lower Compartment",
   "screen.ordertocook.refrigerator.sort_tooltip": "Sort items",
+  "screen.ordertocook.custom_menu.syncing": "Syncing custom menu %s%%",
+  "screen.ordertocook.custom_menu.failed": "Custom menu sync failed; reopen this screen to retry",
   "jade.ordertocook.packaging_shelf.leather": "Leather: %1$s/%2$s",
   "jade.ordertocook.plate_shelf.clean_plates": "Clean plates: %1$s/%2$s",
   "jade.ordertocook.washing_table.dirty_plates": "Dirty plates: %1$s/%2$s",

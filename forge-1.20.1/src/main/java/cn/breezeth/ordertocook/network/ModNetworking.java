@@ -27,7 +27,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class ModNetworking {
-    private static final String PROTOCOL = "2";
+    private static final String PROTOCOL = "3";
     private static int nextPacketId = 0;
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
@@ -90,7 +90,10 @@ public final class ModNetworking {
         public String owner() { return owner; }
     }
 
-    public record CustomMenuSyncS2CPayload(String json) {}
+    public record CustomMenuSyncRequestC2SPayload(String hash) {}
+    public record CustomMenuSyncManifestS2CPayload(String hash, int rawSize, int compressedSize, int chunks, boolean unchanged, boolean failed) {}
+    public record CustomMenuSyncChunkS2CPayload(String hash, int index, byte[] data) {}
+    public record CustomMenuInvalidatedS2CPayload(String hash) {}
 
     public static final class VanillaEraFaresChronRequirementsQueryC2SPayload {
         public static final VanillaEraFaresChronRequirementsQueryC2SPayload INSTANCE = new VanillaEraFaresChronRequirementsQueryC2SPayload();
@@ -173,8 +176,10 @@ public final class ModNetworking {
         });
         registerClient(RestaurantNameS2CPayload.class, (msg, buf) -> { buf.writeUtf(msg.name(), 128); buf.writeUtf(msg.owner(), 64); },
                 buf -> new RestaurantNameS2CPayload(buf.readUtf(128), buf.readUtf(64)), ModNetworkingClientBridge::handleRestaurantName);
-        registerClient(CustomMenuSyncS2CPayload.class, (msg, buf) -> buf.writeUtf(msg.json(), 32767),
-                buf -> new CustomMenuSyncS2CPayload(buf.readUtf(32767)), ModNetworkingClientBridge::handleCustomMenuSync);
+        registerServer(CustomMenuSyncRequestC2SPayload.class, (msg,buf)->buf.writeUtf(msg.hash(),64), buf->new CustomMenuSyncRequestC2SPayload(buf.readUtf(64)), (msg,player)->sendCustomMenuSync(player,msg.hash()));
+        registerClient(CustomMenuSyncManifestS2CPayload.class, (msg,buf)->{buf.writeUtf(msg.hash(),64);buf.writeVarInt(msg.rawSize());buf.writeVarInt(msg.compressedSize());buf.writeVarInt(msg.chunks());buf.writeBoolean(msg.unchanged());buf.writeBoolean(msg.failed());}, buf->new CustomMenuSyncManifestS2CPayload(buf.readUtf(64),buf.readVarInt(),buf.readVarInt(),buf.readVarInt(),buf.readBoolean(),buf.readBoolean()), ModNetworkingClientBridge::handleCustomMenuSyncManifest);
+        registerClient(CustomMenuSyncChunkS2CPayload.class, (msg,buf)->{buf.writeUtf(msg.hash(),64);buf.writeVarInt(msg.index());buf.writeByteArray(msg.data());}, buf->new CustomMenuSyncChunkS2CPayload(buf.readUtf(64),buf.readVarInt(),buf.readByteArray(CustomMenuSyncCodec.CHUNK_SIZE)), ModNetworkingClientBridge::handleCustomMenuSyncChunk);
+        registerClient(CustomMenuInvalidatedS2CPayload.class, (msg,buf)->buf.writeUtf(msg.hash(),64), buf->new CustomMenuInvalidatedS2CPayload(buf.readUtf(64)), ModNetworkingClientBridge::handleCustomMenuInvalidated);
 
         registerServer(VanillaEraFaresChronRequirementsQueryC2SPayload.class, (msg, buf) -> {}, buf -> VanillaEraFaresChronRequirementsQueryC2SPayload.INSTANCE, (msg, player) ->
                 sendToPlayer(player, new VanillaEraFaresChronRequirementsS2CPayload(buildVanillaEraFaresChronRequirementsJson())));
@@ -209,15 +214,21 @@ public final class ModNetworking {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), payload);
     }
 
-    public static void sendCustomMenuSync(ServerPlayer player) {
-        sendToPlayer(player, new CustomMenuSyncS2CPayload(
-                cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()));
+    public static void sendCustomMenuSync(ServerPlayer player, String clientHash) {
+        try {
+            var prepared=CustomMenuSyncServerCache.prepare(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson());
+            boolean unchanged=prepared.hash().equals(clientHash);
+            sendToPlayer(player,new CustomMenuSyncManifestS2CPayload(prepared.hash(),prepared.rawSize(),prepared.compressed().length,unchanged?0:prepared.chunkCount(),unchanged,false));
+            if(!unchanged) for(int i=0;i<prepared.chunkCount();i++) sendToPlayer(player,new CustomMenuSyncChunkS2CPayload(prepared.hash(),i,prepared.chunk(i)));
+        } catch(java.io.IOException error) {
+            cn.breezeth.ordertocook.OrderToCookMod.LOGGER.error("Failed to prepare custom menu sync",error);
+            sendToPlayer(player,new CustomMenuSyncManifestS2CPayload("0".repeat(64),0,0,0,false,true));
+        }
     }
 
     public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            sendCustomMenuSync(player);
-        }
+        try { String hash=CustomMenuSyncServerCache.hash(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()); for(ServerPlayer player:server.getPlayerList().getPlayers()) sendToPlayer(player,new CustomMenuInvalidatedS2CPayload(hash)); }
+        catch(java.io.IOException error){cn.breezeth.ordertocook.OrderToCookMod.LOGGER.error("Failed to invalidate custom menu sync",error);}
     }
 
     private static <T> void registerServer(Class<T> type, BiConsumer<T, FriendlyByteBuf> encoder, Function<FriendlyByteBuf, T> decoder, BiConsumer<T, ServerPlayer> handler) {

@@ -112,15 +112,25 @@ public final class ModNetworking {
         public CustomPayload.Id<? extends CustomPayload> getId() { return ID; }
     }
 
-    public record CustomMenuSyncS2CPayload(String json) implements CustomPayload {
-        public static final CustomPayload.Id<CustomMenuSyncS2CPayload> ID =
-                new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID, "custom_menu_sync_s2c"));
-        public static final PacketCodec<PacketByteBuf, CustomMenuSyncS2CPayload> CODEC =
-                PacketCodec.of((payload, buf) -> buf.writeString(payload.json(), 32767),
-                        buf -> new CustomMenuSyncS2CPayload(buf.readString(32767)));
-
-        @Override
-        public CustomPayload.Id<? extends CustomPayload> getId() { return ID; }
+    public record CustomMenuSyncRequestC2SPayload(String hash) implements CustomPayload {
+        public static final CustomPayload.Id<CustomMenuSyncRequestC2SPayload> ID = new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID, "custom_menu_sync_request_c2s"));
+        public static final PacketCodec<PacketByteBuf, CustomMenuSyncRequestC2SPayload> CODEC = PacketCodec.of((p,b)->b.writeString(p.hash(),64), b->new CustomMenuSyncRequestC2SPayload(b.readString(64)));
+        @Override public CustomPayload.Id<? extends CustomPayload> getId(){return ID;}
+    }
+    public record CustomMenuSyncManifestS2CPayload(String hash,int rawSize,int compressedSize,int chunks,boolean unchanged,boolean failed) implements CustomPayload {
+        public static final CustomPayload.Id<CustomMenuSyncManifestS2CPayload> ID = new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID,"custom_menu_sync_manifest_s2c"));
+        public static final PacketCodec<PacketByteBuf,CustomMenuSyncManifestS2CPayload> CODEC=PacketCodec.of((p,b)->{b.writeString(p.hash(),64);b.writeVarInt(p.rawSize());b.writeVarInt(p.compressedSize());b.writeVarInt(p.chunks());b.writeBoolean(p.unchanged());b.writeBoolean(p.failed());},b->new CustomMenuSyncManifestS2CPayload(b.readString(64),b.readVarInt(),b.readVarInt(),b.readVarInt(),b.readBoolean(),b.readBoolean()));
+        @Override public CustomPayload.Id<? extends CustomPayload> getId(){return ID;}
+    }
+    public record CustomMenuSyncChunkS2CPayload(String hash,int index,byte[] data) implements CustomPayload {
+        public static final CustomPayload.Id<CustomMenuSyncChunkS2CPayload> ID=new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID,"custom_menu_sync_chunk_s2c"));
+        public static final PacketCodec<PacketByteBuf,CustomMenuSyncChunkS2CPayload> CODEC=PacketCodec.of((p,b)->{b.writeString(p.hash(),64);b.writeVarInt(p.index());b.writeByteArray(p.data());},b->new CustomMenuSyncChunkS2CPayload(b.readString(64),b.readVarInt(),b.readByteArray(cn.breezeth.ordertocook.network.CustomMenuSyncCodec.CHUNK_SIZE)));
+        @Override public CustomPayload.Id<? extends CustomPayload> getId(){return ID;}
+    }
+    public record CustomMenuInvalidatedS2CPayload(String hash) implements CustomPayload {
+        public static final CustomPayload.Id<CustomMenuInvalidatedS2CPayload> ID=new CustomPayload.Id<>(Identifier.of(ModConstants.MOD_ID,"custom_menu_invalidated_s2c"));
+        public static final PacketCodec<PacketByteBuf,CustomMenuInvalidatedS2CPayload> CODEC=PacketCodec.of((p,b)->b.writeString(p.hash(),64),b->new CustomMenuInvalidatedS2CPayload(b.readString(64)));
+        @Override public CustomPayload.Id<? extends CustomPayload> getId(){return ID;}
     }
 
     public static final class ToggleMotorcycleLightPayload implements CustomPayload {
@@ -237,7 +247,10 @@ public final class ModNetworking {
         PayloadTypeRegistry.playC2S().register(RestaurantRenameC2SPayload.ID, RestaurantRenameC2SPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(RestaurantNameQueryC2SPayload.ID, RestaurantNameQueryC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(RestaurantNameS2CPayload.ID, RestaurantNameS2CPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(CustomMenuSyncS2CPayload.ID, CustomMenuSyncS2CPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(CustomMenuSyncRequestC2SPayload.ID, CustomMenuSyncRequestC2SPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CustomMenuSyncManifestS2CPayload.ID, CustomMenuSyncManifestS2CPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CustomMenuSyncChunkS2CPayload.ID, CustomMenuSyncChunkS2CPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CustomMenuInvalidatedS2CPayload.ID, CustomMenuInvalidatedS2CPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ToggleMotorcycleLightPayload.ID, ToggleMotorcycleLightPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StartWashingPayload.ID, StartWashingPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StopWashingPayload.ID, StopWashingPayload.CODEC);
@@ -248,6 +261,7 @@ public final class ModNetworking {
     }
 
     public static void registerServerReceivers() {
+        ServerPlayNetworking.registerGlobalReceiver(CustomMenuSyncRequestC2SPayload.ID, (payload, context) -> sendCustomMenuSync(context.player(), payload.hash()));
         ServerPlayNetworking.registerGlobalReceiver(PrestigeQueryC2SPayload.ID, (payload, context) -> {
             int prestige = PrestigeManager.getPlayerPrestige(context.player());
             ServerPlayNetworking.send(context.player(), new PrestigeQueryS2CPayload(prestige));
@@ -425,14 +439,19 @@ public final class ModNetworking {
         });
     }
 
-    public static void sendCustomMenuSync(net.minecraft.server.network.ServerPlayerEntity player) {
-        ServerPlayNetworking.send(player, new CustomMenuSyncS2CPayload(
-                cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()));
+    public static void sendCustomMenuSync(net.minecraft.server.network.ServerPlayerEntity player, String clientHash) {
+        try {
+            var prepared=CustomMenuSyncServerCache.prepare(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson());
+            boolean unchanged=prepared.hash().equalsIgnoreCase(clientHash);
+            ServerPlayNetworking.send(player,new CustomMenuSyncManifestS2CPayload(prepared.hash(),prepared.rawSize(),prepared.compressed().length,unchanged?0:prepared.chunkCount(),unchanged,false));
+            if(!unchanged) for(int i=0;i<prepared.chunkCount();i++) ServerPlayNetworking.send(player,new CustomMenuSyncChunkS2CPayload(prepared.hash(),i,prepared.chunk(i)));
+        } catch (Exception error) {
+            ServerPlayNetworking.send(player,new CustomMenuSyncManifestS2CPayload("0".repeat(64),0,0,0,false,true));
+        }
     }
 
     public static void broadcastCustomMenuSync(net.minecraft.server.MinecraftServer server) {
-        for (var player : server.getPlayerManager().getPlayerList()) {
-            sendCustomMenuSync(player);
-        }
+        try { String hash=CustomMenuSyncServerCache.hash(cn.breezeth.ordertocook.config.ConfigManager.exportCustomMenuItemsJson()); for(var player:server.getPlayerManager().getPlayerList()) ServerPlayNetworking.send(player,new CustomMenuInvalidatedS2CPayload(hash)); }
+        catch(Exception ignored) {}
     }
 }

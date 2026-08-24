@@ -19,9 +19,9 @@ final class ModNetworkingClientBridge {
         invoke("handleRestaurantName", new Class<?>[] { ModNetworking.RestaurantNameS2CPayload.class }, payload);
     }
 
-    static void handleCustomMenuSync(ModNetworking.CustomMenuSyncS2CPayload payload, IPayloadContext context) {
-        invoke("handleCustomMenuSync", new Class<?>[] { ModNetworking.CustomMenuSyncS2CPayload.class }, payload);
-    }
+    static void handleCustomMenuSyncManifest(ModNetworking.CustomMenuSyncManifestS2CPayload p,IPayloadContext c){invoke("handleCustomMenuSyncManifest",new Class<?>[]{ModNetworking.CustomMenuSyncManifestS2CPayload.class},p);}
+    static void handleCustomMenuSyncChunk(ModNetworking.CustomMenuSyncChunkS2CPayload p,IPayloadContext c){invoke("handleCustomMenuSyncChunk",new Class<?>[]{ModNetworking.CustomMenuSyncChunkS2CPayload.class},p);}
+    static void handleCustomMenuInvalidated(ModNetworking.CustomMenuInvalidatedS2CPayload p,IPayloadContext c){invoke("handleCustomMenuInvalidated",new Class<?>[]{ModNetworking.CustomMenuInvalidatedS2CPayload.class},p);}
 
     static void handleRiderAnim(ModNetworking.RiderAnimS2CPayload payload, IPayloadContext context) {
         invoke("handleRiderAnim", new Class<?>[] { ModNetworking.RiderAnimS2CPayload.class }, payload);
